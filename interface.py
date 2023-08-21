@@ -1,14 +1,28 @@
 import tkinter as tk
 from tkinter import ttk
 from functools import partial
+import json
 from manage_inputs import token_length
 
 class OnSubmit:
+    
+    def save_text(entered_text, data_label):
+        json_data = {
+            data_label: entered_text
+        }
+
+        with open('save_data.json', 'w') as file:
+            json.dump(json_data, file)
+
+
     def title():
         pass
-    def text_entry(frame, text_box):
+    def text_box(frame, text_box, data_label):
         entered_text = text_box.get("1.0", tk.END)
         text_token_length = token_length(entered_text)
+
+        OnSubmit.save_text(entered_text, data_label)
+
         for widget in frame.winfo_children():
             widget.pack_forget()
         new_label = tk.Label(frame, text= "We've saved your text")
@@ -17,7 +31,7 @@ class OnSubmit:
         new_label2.pack()
 
         edit_button = tk.Button(frame, text='Edit', command=restore_frame)
-        edit_button.pack() 
+        edit_button.pack()
 
 
 def restore_frame(frame):
@@ -63,7 +77,7 @@ novel_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
 novel_text_scrollbar.config(command=novel_text.yview)
 
-submit_button = tk.Button(novel_text_frame, text = 'Save', command=partial(OnSubmit.text_entry, novel_text_frame, novel_text))
+submit_button = tk.Button(novel_text_frame, text = 'Save', command=partial(OnSubmit.text_box, novel_text_frame, novel_text, 'novel_text'))
 submit_button.pack()
 
 label2 = tk.Label(frame2, text="Here is the data in your loaded novel")
