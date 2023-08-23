@@ -1,5 +1,7 @@
 #My ignores
 practice.py
+practice_test.py
+.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
