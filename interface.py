@@ -6,6 +6,20 @@ import json
 from utility_functions import token_length
 import create_project
 
+def print_root_children():
+    print(root.winfo_children())
+
+def return_root_single_child():
+    children = root.winfo_children()
+    if len (children) == 0:
+        print('There are no children')
+    elif len (children) > 1:
+        print('There is more than 1 child')
+    else:
+        return children[0]
+
+
+
 
 def select_tab_by_label(label_text, notebook):
     for index, tab in enumerate(notebook.tabs()):
@@ -69,20 +83,25 @@ class LoadingPage:
         self.frame.pack_forget()
         MainInterface(self.frame.master)
 
+    #This function takes the entered text and creates the new project
     def new_project(title, window, entry_box, event):
         global PROJECT
         title=entry_box.get()
         PROJECT = create_project.create_project(title)
         window.destroy()
+        global loading_page2
         loading_page2 = LoadingPage2(root)
 
     def enter_project_title(self):
         entry_window = tk.Toplevel(root)
+        entry_window.focus_set()
+
         label = tk.Label(entry_window, text='Title:')
         label.pack(side=tk.LEFT)
         entry_box = tk.Entry(entry_window, width=100)
         entry_box.pack(side=tk.LEFT)
         entry_box.bind("<Return>", partial(self.new_project, entry_window, entry_box))
+        entry_box.focus_set()
 
     def exit_app(self):
         root.quit()
@@ -170,7 +189,7 @@ class AddFrame(ttk.Frame):
         self.pack()
         self.title = PROJECT.title
         self.style = ttk.Style()
-        self.style.configure("Title.TLabel", font=("Helvetica", 24, "bold"), foreground="blue")
+        self.style.configure("Title.TLabel", font=("Helvetica", 24, "bold"), foreground="black")
 
     
     def create_title(self, text):
@@ -204,17 +223,17 @@ class InputFrame(AddFrame):
     def __init__ (self, master):
         super().__init__(master)
         self.create_title(text = f'Enter the details of {self.title}')
-        label_texts = self.fetch_label_texts()
-        self.project_text = CustomTextBox(master, 'project_text', label_texts['project_text'])
+        # label_texts = self.fetch_label_texts()
+        # self.project_text = CustomTextBox(master, 'project_text', label_texts['project_text'])
         
-        self.key_information = CustomTextBox(master, 'key_information', label_texts['key_information'])
-        self.key_information.change_submitted_text('Your key information has been saved.')
+        # self.key_information = CustomTextBox(master, 'key_information', label_texts['key_information'])
+        # self.key_information.change_submitted_text('Your key information has been saved.')
         
-        self.reviews = CustomTextBox(master, 'reviews', label_texts['reviews'])
-        self.reviews.change_submitted_text('Your example reviews have been saved.')
+        # self.reviews = CustomTextBox(master, 'reviews', label_texts['reviews'])
+        # self.reviews.change_submitted_text('Your example reviews have been saved.')
 
-        self.blurbs = CustomTextBox(master, 'sample_blurbs', label_texts['sample_blurbs'])
-        self.blurbs.change_submitted_text('Your example blurbs have been saved.')
+        # self.blurbs = CustomTextBox(master, 'sample_blurbs', label_texts['sample_blurbs'])
+        # self.blurbs.change_submitted_text('Your example blurbs have been saved.')
 
     def fetch_label_texts(self):
         label_texts = {}
@@ -237,10 +256,14 @@ class MainInterface:
         self.notebook.add(self.editing_frame, text="Editing and Summarization")
         self.notebook.add(self.blurb_frame, text='Create Blurbs')
 
-# Actually run the project
-PROJECT = None
-root = tk.Tk()
-root.title('GPT Writing Tools')
-loading_page = LoadingPage(root)
-root.geometry("800x600+100+50")
-root.mainloop()
+def start_program():
+    global PROJECT, root, loading_page, loading_page2
+    PROJECT = None
+    root = tk.Tk()
+    root.title('GPT Writing Tools')
+    loading_page = LoadingPage(root)
+    root.geometry("800x600+100+50")
+    root.mainloop()
+
+if __name__ == '__main__':
+    start_program()
