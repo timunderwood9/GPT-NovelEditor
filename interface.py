@@ -223,8 +223,8 @@ class InputFrame(AddFrame):
     def __init__ (self, master):
         super().__init__(master)
         self.create_title(text = f'Enter the details of {self.title}')
-        # label_texts = self.fetch_label_texts()
-        # self.project_text = CustomTextBox(master, 'project_text', label_texts['project_text'])
+        label_texts = self.fetch_label_texts()
+        self.project_text = CustomTextBox(master, 'project_text', label_texts['project_text'])
         
         # self.key_information = CustomTextBox(master, 'key_information', label_texts['key_information'])
         # self.key_information.change_submitted_text('Your key information has been saved.')
