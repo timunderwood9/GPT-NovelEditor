@@ -67,6 +67,18 @@ class OnSubmit:
 def restore_frame(frame):
     pass
 
+class AutoHideScrollbar(tk.Scrollbar):
+    def __init__(self, master, **kwargs):
+        tk.Scrollbar.__init__(self, master, **kwargs)
+        self.pack_forget()
+
+    def set(self, lo, hi):
+        if float(lo) <= 0.0 and float(hi) >= 1.0:
+            self.pack_forget()
+        else:
+            self.pack(side="right", fill="y")
+        tk.Scrollbar.set(self, lo, hi)
+
 class LoadingPage:
     def __init__(self, master):
         self.frame = tk.Frame(master)
@@ -186,6 +198,19 @@ class CustomTextBox:
 class AddFrame(ttk.Frame):
     def __init__(self, master):
         super().__init__(master)
+        # self.canvas = tk.Canvas(self)
+        # self.canvas.pack(side='left', fill = 'both', expand = True)
+        # self.scrollbar = AutoHideScrollbar(self.canvas, orient='vertical', command = self.canvas.yview)
+
+        # self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        # self.inner_frame = tk.Frame(self.canvas)
+        # self.canvas.create_window((0, 0), window=self.inner_frame, anchor='nw')
+        # self.inner_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        # self.inner_frame.bind("<Button-1>", lambda e: self.canvas.focus_set())
+        # self.canvas.bind("<FocusIn>", lambda e: print("Canvas got focus"))
+
+
+
         self.pack()
         self.title = PROJECT.title
         self.style = ttk.Style()
@@ -216,24 +241,33 @@ class AddFrame(ttk.Frame):
         return "\n".join(wrapped_lines)
 
 
+class EditorFrame(AddFrame):
+    pass
 
+class BlurbFrame(AddFrame):
+    pass
     
 
 class InputFrame(AddFrame):
     def __init__ (self, master):
         super().__init__(master)
         self.create_title(text = f'Enter the details of {self.title}')
-        label_texts = self.fetch_label_texts()
-        self.project_text = CustomTextBox(master, 'project_text', label_texts['project_text'])
-        
-        # self.key_information = CustomTextBox(master, 'key_information', label_texts['key_information'])
-        # self.key_information.change_submitted_text('Your key information has been saved.')
-        
-        # self.reviews = CustomTextBox(master, 'reviews', label_texts['reviews'])
-        # self.reviews.change_submitted_text('Your example reviews have been saved.')
 
-        # self.blurbs = CustomTextBox(master, 'sample_blurbs', label_texts['sample_blurbs'])
-        # self.blurbs.change_submitted_text('Your example blurbs have been saved.')
+        label_texts = self.fetch_label_texts()
+        # self.project_text = CustomTextBox(self.inner_frame, 'project_text', label_texts['project_text'])
+        self.project_text = CustomTextBox(self, 'project_text', label_texts['project_text'])
+        
+        # self.key_information = CustomTextBox(self.inner_frame, 'key_information', label_texts['key_information'])
+        self.key_information = CustomTextBox(self, 'key_information', label_texts['key_information'])
+        self.key_information.change_submitted_text('Your key information has been saved.')
+        
+        # self.reviews = CustomTextBox(self.inner_frame, 'reviews', label_texts['reviews'])
+        self.reviews = CustomTextBox(self, 'reviews', label_texts['reviews'])
+        self.reviews.change_submitted_text('Your example reviews have been saved.')
+
+        # self.blurbs = CustomTextBox(self.inner_frame, 'sample_blurbs', label_texts['sample_blurbs'])
+        self.blurbs = CustomTextBox(self, 'sample_blurbs', label_texts['sample_blurbs'])
+        self.blurbs.change_submitted_text('Your example blurbs have been saved.')
 
     def fetch_label_texts(self):
         label_texts = {}
