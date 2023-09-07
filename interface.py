@@ -9,6 +9,9 @@ import create_project
 def print_root_children():
     print(root.winfo_children())
 
+def quit_program(event):
+    root.quit()
+
 def return_root_single_child():
     children = root.winfo_children()
     if len (children) == 0:
@@ -297,6 +300,7 @@ def start_program():
     root.title('GPT Writing Tools')
     loading_page = LoadingPage(root)
     root.geometry("800x600+100+50")
+    root.bind_all('<Control-q>', quit_program)
     root.mainloop()
 
 if __name__ == '__main__':

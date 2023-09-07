@@ -6,19 +6,27 @@ class App(tk.Tk):
 
         self.geometry("600x400")  # Set window width to be wider than textboxes
 
+        
+        self.scrollbar1 = tk.Scrollbar(self, orient="vertical")
+        self.scrollbar1.pack(side="right", fill="y")
+
+        self.scrollbar2 = tk.Scrollbar(self, orient="vertical")
+        self.scrollbar2.pack(side = 'left', fill = "y")
+
+
         self.canvas = tk.Canvas(self)
         self.canvas.pack(side="left", fill="both", expand=True)
-
-        
 
         self.frame = tk.Frame(self.canvas)
         self.canvas_frame = self.canvas.create_window((0, 0), window=self.frame, anchor="nw")
 
-        self.scrollbar = tk.Scrollbar(self, orient="horizontal", command=self.canvas.yview)
-        self.scrollbar.pack(side="bottom", fill="x")
+        self.scrollbar1.configure(command=self.canvas.yview)
+        self.scrollbar2.configure(command=self.canvas.yview)
 
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.scroll_flag = 'scrollbar2'
+        self.canvas.configure(yscrollcommand=self.scrollbar2.set)
 
+        self.bind_all("<Control-a>", self.change_bound_scrollbar)
         self.frame.bind("<Configure>", self.update_scrollregion)
         self.canvas.bind("<Configure>", self.update_window_size)
         self.canvas.bind_all("<MouseWheel>", self.mouse_scroll)
@@ -35,6 +43,15 @@ class App(tk.Tk):
             text_box.pack()
             text_box.bind("<FocusIn>", self.focus_in_textbox)
             text_box.bind("<FocusOut>", self.focus_out_textbox)
+
+    def change_bound_scrollbar(self, event):
+        if self.scroll_flag == 'scrollbar2':
+            self.canvas.configure(yscrollcommand=self.scrollbar1.set)
+            self.scroll_flag = 'scrollbar1'
+        else:
+            self.canvas.configure(yscrollcommand=self.scrollbar2.set)
+            self.scroll_flag = 'scrollbar2'
+
 
     def update_scrollregion(self, event=None):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
