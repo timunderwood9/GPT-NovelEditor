@@ -224,6 +224,28 @@ class AddFrame(ttk.Frame):
         label = ttk.Label(self, text=text, style="Title.TLabel")
         label.pack()
 
+    #Note: While when I click on the textbox, the window stops moving, sometimes
+    #while the window is selected the textbox also scrolls if the mouse cursor is over 
+    #it. This should be corrected later, but doesn't seem like an essential part of an MVP
+    #My best guess it that this driven by the scrollbar built into Tkinter's textbox class
+    #and that would need to be turned off and on in the relevant functions. 
+    def activate_window_scrollbar(self, event):
+        self.canvas.bind_all("<MouseWheel>", self.mouse_scroll)
+        for widget in self.frame.winfo_children():
+            if isinstance(widget, tk.Text):
+                widget.unbind("<MouseWheel>")
+        self.canvas.focus_set()
+
+    def deactivate_window_scrollbar(self, event):
+        self.canvas.unbind_all("<MouseWheel>")
+
+    def bind_activate_window_scrollbar_to_textbox_labels(self):
+        for widget in self.frame.winfo_children():
+            if isinstance(widget, tk.Frame):
+                for sub_widget in widget.winfo_children():
+                    if isinstance (sub_widget, tk.Label):
+                        sub_widget.bind("<Button-1>", self.activate_window_scrollbar)
+                
     #CHANGE/ WARNING: A clearly ugly solution to getting the font for the default label, that also
         #makes the code more rigid because it doesn't respond to changes in font
     def label_word_wrapper(self, text, max_width = 500):
@@ -245,7 +267,45 @@ class AddFrame(ttk.Frame):
 
 
 class EditorFrame(AddFrame):
-    pass
+    def __init__(self, master):
+        super().__init__(master)        
+        if not api_key:
+            api_entry_box = CustomTextBox(self.frame, 'api_key', "Enter your OpenAI API key")
+
+        self.prompt = CustomTextBox(self.frame, 'current_prompt', 'Curent Prompt for ChatGPT')
+        #self.gpt4_toggle = radio button and label
+        
+        DIVIDED = False
+        
+        if DIVIDED:
+            self.break_into_sections_box()
+        else:
+            self.display_current_project()
+
+
+    def display_current_project(self):
+        self.outer_project_frame = tk.Frame(self)
+        self.outer_project_frame.pack()
+        title = tk.Label(self.outer_project_frame, text='Your Current Project')
+        title.pack()
+        frame = tk.Frame()
+        #frame interior
+        self.create_buttons()
+
+    def create_buttons(self):
+        #run_all_button 
+        #download_responses_to_txt_button
+        #save_project_button
+        pass
+
+    def break_into_sections_box(self):
+        #create frame
+        
+        #create submit button
+
+        #create 'Chapter as divider toggle'
+        DIVIDED = True
+        pass
 
 class BlurbFrame(AddFrame):
     pass
@@ -285,17 +345,18 @@ class MainInterface:
         self.notebook = ttk.Notebook(master)
         self.notebook.pack(expand=True, fill="both")
 
-        self.editing_frame = ttk.Frame(self.notebook)
+        self.editing_frame = EditorFrame(self.notebook)
         self.blurb_frame = ttk.Frame(self.notebook)
         self.input_frame = InputFrame(self.notebook)
 
-        self.notebook.add(self.input_frame, text="Add Details")
+        self.notebook.add(self.input_frame, text="Input Novel")
         self.notebook.add(self.editing_frame, text="Editing and Summarization")
         self.notebook.add(self.blurb_frame, text='Create Blurbs')
 
 def start_program():
-    global PROJECT, root, loading_page, loading_page2
+    global PROJECT, root, loading_page, loading_page2, api_key
     PROJECT = None
+    api_key = None
     root = tk.Tk()
     root.title('GPT Writing Tools')
     loading_page = LoadingPage(root)
