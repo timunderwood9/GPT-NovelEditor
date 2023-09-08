@@ -126,6 +126,8 @@ class LoadingPage2:
         self.title = PROJECT.title
         title_label = self.create_title_label(self.title)
         
+
+        
         input_details_button = tk.Button(self.frame, text='Input Novel Details', command=self.load_input_page)
         editing_button = tk.Button(self.frame, text='Use editing and summarization prompts', command=self.load_editing_page)
         blurb_writing_button = tk.Button(self.frame, text='Use Blurb Writing Prompts', command=self.load_blurb_page)
@@ -198,18 +200,12 @@ class CustomTextBox:
 class AddFrame(ttk.Frame):
     def __init__(self, master):
         super().__init__(master)
-        # self.canvas = tk.Canvas(self)
-        # self.canvas.pack(side='left', fill = 'both', expand = True)
-        # self.scrollbar = AutoHideScrollbar(self.canvas, orient='vertical', command = self.canvas.yview)
+        self.canvas = tk.Canvas(self)
+        self.canvas.pack(side='left', fill = 'both', expand = True)
+        
 
-        # self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        # self.inner_frame = tk.Frame(self.canvas)
-        # self.canvas.create_window((0, 0), window=self.inner_frame, anchor='nw')
-        # self.inner_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
-        # self.inner_frame.bind("<Button-1>", lambda e: self.canvas.focus_set())
-        # self.canvas.bind("<FocusIn>", lambda e: print("Canvas got focus"))
-
-
+        self.scrollbar = tk.Scrollbar(self.canvas, orient='vertical')
+        self.scrollbar.pack(fill='y', side='right')
 
         self.pack()
         self.title = PROJECT.title
