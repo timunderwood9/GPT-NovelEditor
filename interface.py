@@ -18,8 +18,8 @@ def return_root_single_child():
     else:
         return children[0]
 
-
-
+def quit_program(event):
+    root.quit()
 
 def select_tab_by_label(label_text, notebook):
     for index, tab in enumerate(notebook.tabs()):
@@ -167,20 +167,18 @@ class CustomTextBox:
         self.submitted_text = "Your text has been saved"
         self.submit_button_text = "Save"
 
+        self.label = tk.Label(self.frame, text=text)
+        self.label.pack()
 
-        label = tk.Label(self.frame, text=text)
-        label.pack()
-
-        scrollbar = tk.Scrollbar(self.frame)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.textbox = tk.Text(self.frame, height=5, wrap=tk.WORD, yscrollcommand=scrollbar.set)
+        self.textbox = tk.Text(self.frame, height=5, wrap=tk.WORD)
         self.textbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        scrollbar.config(command=self.textbox.yview)
+        self.textbox.bind("<FocusIn>", self.deactivate_window_scrollbar)
 
         submit_button = tk.Button(self.frame, text=self.submit_button_text, command=self.submit_command)
         submit_button.pack()
+
+    def deactivate_window_scrollbar(self, event):
+        root.unbind_all("<MouseWheel>")
 
     def submit_command(self):
         new_property_value = self.textbox.get("1.0", tk.END).strip() # Get text from Text widget
@@ -188,44 +186,70 @@ class CustomTextBox:
         setattr(PROJECT, self.property_name, new_property_value)
 
         destroy_widgets(self.frame)
-        label = tk.Label(self.frame, text=self.submitted_text)
-        label.pack()
+        self.label = tk.Label(self.frame, text=self.submitted_text)
+        self.label.pack()
     
     def change_submitted_text(self, new_text):
         self.submitted_text = new_text
 
-
-
-
 class AddFrame(ttk.Frame):
     def __init__(self, master):
         super().__init__(master)
+        self.pack
         self.canvas = tk.Canvas(self)
         self.canvas.pack(side='left', fill = 'both', expand = True)
 
         self.scrollbar = tk.Scrollbar(self.canvas, orient='vertical', command=self.canvas.yview)
         self.scrollbar.pack(fill='y', side='right')
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        
+        self.frame = tk.Frame(self.canvas)
+        self.canvas_window = self.canvas.create_window((0,0), window=self.frame, anchor="nw")
+
+        self.frame.bind("<Configure>", self.update_scrollregion)
         self.bind_all("<MouseWheel>", self.mouse_scroll)
+        self.canvas.bind("<Configure>", self.update_window_size)
+        self.frame.bind("<Button-1>", self.activate_window_scrollbar)  # Focus out when clicking on frame
 
-
-        self.inner_frame = tk.Frame(self.canvas)
-        self.inner_frame.pack()
-
-        self.pack()
         self.title = PROJECT.title
         self.style = ttk.Style()
         self.style.configure("Title.TLabel", font=("Helvetica", 24, "bold"), foreground="black")
-
+        
     def mouse_scroll(self, event):
         self.canvas.yview_scroll(-1*(event.delta//120), "units")
 
+    def update_scrollregion(self, event):
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))
+
+    def update_window_size(self, event):
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
+
     def create_title(self, text):
-        label = ttk.Label(self.inner_frame, text=text, style="Title.TLabel")
+        label = ttk.Label(self.frame, text=text, style="Title.TLabel")
         label.pack()
 
-    def switch_focus(self):
-        pass
+    #Note: While when I click on the textbox, the window stops moving, sometimes
+    #while the window is selected the textbox also scrolls if the mouse cursor is over 
+    #it. This should be corrected later, but doesn't seem like an essential part of an MVP
+    #My best guess it that this driven by the scrollbar built into Tkinter's textbox class
+    #and that would need to be turned off and on in the relevant functions. 
+    def activate_window_scrollbar(self, event):
+        self.canvas.bind_all("<MouseWheel>", self.mouse_scroll)
+        for widget in self.frame.winfo_children():
+            if isinstance(widget, tk.Text):
+                widget.unbind("<MouseWheel>")
+        self.canvas.focus_set()
+
+    def deactivate_window_scrollbar(self, event):
+        self.canvas.unbind_all("<MouseWheel>")
+
+    def bind_activate_window_scrollbar_to_textbox_labels(self):
+        for widget in self.frame.winfo_children():
+            if isinstance(widget, tk.Frame):
+                for sub_widget in widget.winfo_children():
+                    if isinstance (sub_widget, tk.Label):
+                        sub_widget.bind("<Button-1>", self.activate_window_scrollbar)
+                
 
 
     #CHANGE/ WARNING: A clearly ugly solution to getting the font for the default label, that also
@@ -261,21 +285,22 @@ class InputFrame(AddFrame):
         self.create_title(text = f'Enter the details of {self.title}')
 
         label_texts = self.fetch_label_texts()
-        self.project_text = CustomTextBox(self.inner_frame, 'project_text', label_texts['project_text'])
+        self.project_text = CustomTextBox(self.frame, 'project_text', label_texts['project_text'])
         
         #Section headings that will be used for later features but I've dropped from my
         #minimum viable product version
-        self.key_information = CustomTextBox(self.inner_frame, 'key_information', label_texts['key_information'])
+        self.key_information = CustomTextBox(self.frame, 'key_information', label_texts['key_information'])
         self.key_information.change_submitted_text('Your key information has been saved.')
         
-        self.reviews = CustomTextBox(self.inner_frame, 'reviews', label_texts['reviews'])
+        self.reviews = CustomTextBox(self.frame, 'reviews', label_texts['reviews'])
         self.reviews.change_submitted_text('Your example reviews have been saved.')
 
-        self.blurbs = CustomTextBox(self.inner_frame, 'sample_blurbs', label_texts['sample_blurbs'])
+        self.blurbs = CustomTextBox(self.frame, 'sample_blurbs', label_texts['sample_blurbs'])
         self.blurbs.change_submitted_text('Your example blurbs have been saved.')
 
-        self.test_scrolling = CustomTextBox(self.inner_frame, 'not_relevant', 'This box is just here for testing purposes')
+        self.test_scrolling = CustomTextBox(self.frame, 'not_relevant', 'This box is just here for testing purposes')
         
+        self.bind_activate_window_scrollbar_to_textbox_labels()
 
     def fetch_label_texts(self):
         label_texts = {}
@@ -284,6 +309,7 @@ class InputFrame(AddFrame):
         label_texts['reviews'] = self.label_word_wrapper('OPTIONAL: Put reviews of novels in your genre here. ChatGPT will later use it to identify key features of books in it that readers like. This can be used to improve the editing suggestions and optimize the blurb.')
         label_texts['sample_blurbs'] = self.label_word_wrapper('OPTIONAL: Put examples of blurbs from books in your genre so that chatGPT can use their example to generate a better blurb for you. This only is used for blurb writing.')
         return label_texts
+
 
 class MainInterface:
     def __init__(self, master) -> None:
@@ -305,6 +331,7 @@ def start_program():
     root.title('GPT Writing Tools')
     loading_page = LoadingPage(root)
     root.geometry("800x600+100+50")
+    root.bind_all('<Control-q>', quit_program)
     root.mainloop()
 
 if __name__ == '__main__':

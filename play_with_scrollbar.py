@@ -30,7 +30,7 @@ class App(tk.Tk):
         self.frame.bind("<Configure>", self.update_scrollregion)
         self.canvas.bind("<Configure>", self.update_window_size)
         self.canvas.bind_all("<MouseWheel>", self.mouse_scroll)
-        self.canvas.bind("<Button-1>", self.focus_out_textbox)  # Focus out when clicking on canvas
+        #self.canvas.bind("<Button-1>", self.focus_out_textbox)  # Focus out when clicking on canvas
         self.frame.bind("<Button-1>", self.focus_out_textbox)  # Focus out when clicking on frame
 
 
@@ -64,7 +64,7 @@ class App(tk.Tk):
 
     def focus_in_textbox(self, event):
         self.canvas.unbind_all("<MouseWheel>")
-        event.widget.bind("<MouseWheel>", lambda e: self.scroll_textbox(e, event.widget))
+        #event.widget.bind("<MouseWheel>", lambda e: self.scroll_textbox(e, event.widget))
 
     def focus_out_textbox(self, event):
         self.canvas.bind_all("<MouseWheel>", self.mouse_scroll)
@@ -73,8 +73,8 @@ class App(tk.Tk):
                 widget.unbind("<MouseWheel>")
 
 
-    def scroll_textbox(self, event, widget):
-        widget.yview_scroll(-1*(event.delta//120), "units")
+    # def scroll_textbox(self, event, widget):
+    #     widget.yview_scroll(-1*(event.delta//120), "units")
 
 
 
