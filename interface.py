@@ -202,20 +202,31 @@ class AddFrame(ttk.Frame):
         super().__init__(master)
         self.canvas = tk.Canvas(self)
         self.canvas.pack(side='left', fill = 'both', expand = True)
-        
 
-        self.scrollbar = tk.Scrollbar(self.canvas, orient='vertical')
+        self.scrollbar = tk.Scrollbar(self.canvas, orient='vertical', command=self.canvas.yview)
         self.scrollbar.pack(fill='y', side='right')
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.bind_all("<MouseWheel>", self.mouse_scroll)
+
+
+        self.inner_frame = tk.Frame(self.canvas)
+        self.inner_frame.pack()
 
         self.pack()
         self.title = PROJECT.title
         self.style = ttk.Style()
         self.style.configure("Title.TLabel", font=("Helvetica", 24, "bold"), foreground="black")
 
-    
+    def mouse_scroll(self, event):
+        self.canvas.yview_scroll(-1*(event.delta//120), "units")
+
     def create_title(self, text):
-        label = ttk.Label(self, text=text, style="Title.TLabel")
+        label = ttk.Label(self.inner_frame, text=text, style="Title.TLabel")
         label.pack()
+
+    def switch_focus(self):
+        pass
+
 
     #CHANGE/ WARNING: A clearly ugly solution to getting the font for the default label, that also
         #makes the code more rigid because it doesn't respond to changes in font
@@ -250,20 +261,21 @@ class InputFrame(AddFrame):
         self.create_title(text = f'Enter the details of {self.title}')
 
         label_texts = self.fetch_label_texts()
-        # self.project_text = CustomTextBox(self.inner_frame, 'project_text', label_texts['project_text'])
-        self.project_text = CustomTextBox(self, 'project_text', label_texts['project_text'])
+        self.project_text = CustomTextBox(self.inner_frame, 'project_text', label_texts['project_text'])
         
-        # self.key_information = CustomTextBox(self.inner_frame, 'key_information', label_texts['key_information'])
-        self.key_information = CustomTextBox(self, 'key_information', label_texts['key_information'])
+        #Section headings that will be used for later features but I've dropped from my
+        #minimum viable product version
+        self.key_information = CustomTextBox(self.inner_frame, 'key_information', label_texts['key_information'])
         self.key_information.change_submitted_text('Your key information has been saved.')
         
-        # self.reviews = CustomTextBox(self.inner_frame, 'reviews', label_texts['reviews'])
-        self.reviews = CustomTextBox(self, 'reviews', label_texts['reviews'])
+        self.reviews = CustomTextBox(self.inner_frame, 'reviews', label_texts['reviews'])
         self.reviews.change_submitted_text('Your example reviews have been saved.')
 
-        # self.blurbs = CustomTextBox(self.inner_frame, 'sample_blurbs', label_texts['sample_blurbs'])
-        self.blurbs = CustomTextBox(self, 'sample_blurbs', label_texts['sample_blurbs'])
+        self.blurbs = CustomTextBox(self.inner_frame, 'sample_blurbs', label_texts['sample_blurbs'])
         self.blurbs.change_submitted_text('Your example blurbs have been saved.')
+
+        self.test_scrolling = CustomTextBox(self.inner_frame, 'not_relevant', 'This box is just here for testing purposes')
+        
 
     def fetch_label_texts(self):
         label_texts = {}
