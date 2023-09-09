@@ -293,13 +293,14 @@ class EditorFrame(AddFrame):
 
 
     def display_current_project(self):
-        self.outer_project_frame = tk.Frame(self)
+        self.outer_project_frame = tk.Frame(self.frame)
         self.outer_project_frame.pack()
         title = tk.Label(self.outer_project_frame, text='Your Current Project')
         title.pack()
         frame = tk.Frame()
         #frame interior
         self.create_buttons()
+
 
     def create_buttons(self):
         #run_all_button 
