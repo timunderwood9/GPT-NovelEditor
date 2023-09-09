@@ -15,4 +15,5 @@ interface.loading_page.enter_project_title()
 pyautogui.typewrite('Death in Solomnia')
 pyautogui.typewrite(['enter'])
 
-interface.loading_page2.load_input_page()
+interface.loading_page2.load_editing_page()
+
