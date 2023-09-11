@@ -34,6 +34,9 @@ def destroy_widgets(master):
     for widget in master.winfo_children():
             widget.destroy()
 
+def deactivate_window_scrollbar(self, event):
+    root.unbind_all("<MouseWheel>")
+
 
 class OnSubmit:
     
@@ -160,40 +163,128 @@ class LoadingPage2:
         main_interface = MainInterface(root)
         main_interface.notebook.select(main_interface.blurb_frame)
 
-
+#currently defined to only take 'textbox' and 'entrybox' as types.
 class CustomTextBox:
-    def __init__(self, master, property_name, text):
+    def __init__(self, master, property_name, label_text, widget_type = 'textbox', submitted_text = "Your entry has been saved:\n{}", default_text=None):
         self.frame = tk.Frame(master, borderwidth=5, relief=tk.RIDGE)
         self.frame.pack()
 
+        self.label_text = label_text
         self.property_name = property_name
-        self.submitted_text = "Your text has been saved"
+        self.submitted_text = submitted_text
+        self.widget_type = widget_type
         self.submit_button_text = "Save"
+        self.default_text=default_text
 
-        self.label = tk.Label(self.frame, text=text)
-        self.label.pack()
-
-        self.textbox = tk.Text(self.frame, height=5, wrap=tk.WORD)
-        self.textbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.textbox.bind("<FocusIn>", self.deactivate_window_scrollbar)
-
-        submit_button = tk.Button(self.frame, text=self.submit_button_text, command=self.submit_command)
-        submit_button.pack()
+        self.build_inner_widgets()
 
     def deactivate_window_scrollbar(self, event):
         root.unbind_all("<MouseWheel>")
 
     def submit_command(self):
-        new_property_value = self.textbox.get("1.0", tk.END).strip() # Get text from Text widget
+        if self.widget_type == 'textbox':
+            new_property_value = self.textbox.get("1.0", tk.END).strip() # Get text from Text widget
+        elif self.widget_type == 'entrybox':
+            new_property_value = self.entrybox.get()
+
         global PROJECT
         setattr(PROJECT, self.property_name, new_property_value)
 
         destroy_widgets(self.frame)
-        self.label = tk.Label(self.frame, text=self.submitted_text)
+        #Limiting the length of the printed portion of the entry and adding a '...' for formatting reasons
+        if len(new_property_value) > 200: new_property_value_string = new_property_value[0:200] + '...'
+        else: new_property_value_string = new_property_value
+
+        self.label = tk.Label(self.frame, height=5, text = self.submitted_text.format(new_property_value_string))
+        self.label.pack(side=tk.LEFT)
+
+        self.edit_button = tk.Button(self.frame, text = 'Edit', command=self.edit_command)
+        self.edit_button.pack(side=tk.LEFT)
+    
+    def edit_command(self):
+        destroy_widgets(self.frame)
+
+        self.build_inner_widgets()
+
+    def build_inner_widgets(self):
+        self.label = tk.Label(self.frame, text=self.label_text)
         self.label.pack()
+
+        if self.widget_type == 'textbox':
+            self.textbox = tk.Text(self.frame, height=5, wrap=tk.WORD)
+            self.textbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            self.textbox.bind("<FocusIn>", deactivate_window_scrollbar)
+
+        elif self.widget_type == 'entrybox':
+            self.entrybox = tk.Entry(self.frame, width=40)
+            self.entrybox.pack(side=tk.LEFT)
+
+        elif self.widget_type == 'Text':
+            self.text = tk.Text (self.frame, height=5, wrap='word')
+            self.text.insert('1.0', self.default_text)
+            self.text.configure(state='disabled')
+            self.text.pack(side=tk.LEFT)
+
+
+        else: print('Widget type not defined')
+
+        submit_button = tk.Button(self.frame, text=self.submit_button_text, command=self.submit_command)
+        submit_button.pack()
+
     
     def change_submitted_text(self, new_text):
         self.submitted_text = new_text
+
+class PromptDisplayBox:
+    def __init__(self, master, prompt_text = "You are a developmental editor with years of experience in helping writers create bestselling novels, you will rate the following scene and then provide concrete and specific advice on how to make it more emotionally powerful, compelling, and evocative.") -> None:
+        self.property = 'current_prompt'
+        self.default_prompt = prompt_text
+        self.current_prompt = prompt_text        
+
+        self.frame = tk.Frame(master)
+        self.frame.pack()
+        self.label = tk.Label(self.frame, text = 'Your Current Prompt')
+        self.label.pack()
+        self.generate_prompt_display(self.current_prompt)
+
+    def generate_prompt_display(self, prompt_text):
+        self.prompt_display = tk.Text(self.frame, height = 8, wrap = 'word')
+        self.prompt_display.pack()
+        self.prompt_display.insert('1.0', prompt_text)
+        self.prompt_display.configure(state='disabled')
+        
+        self.button_frame = tk.Frame(self.frame)
+        self.button_frame.pack()
+
+        self.edit_button = tk.Button(self.button_frame, text='Edit', command=self.on_edit_press)
+        self.edit_button.pack(side = tk.LEFT)
+    
+    def on_edit_press(self):
+        self.prompt_display.configure(state='normal')
+        self.edit_button.pack_forget()
+        self.save_button = tk.Button(self.button_frame, text = 'Save', command=self.on_save)
+        self.reset_button = tk.Button(self.button_frame, text = 'Reset Prompt', command=self.on_reset)
+        self.save_button.pack(side=tk.LEFT)
+        self.reset_button.pack(side=tk.LEFT)
+
+    def on_save(self):
+        self.prompt_display.configure(state='disabled')
+        self.current_prompt = self.prompt_display.get('1.0', 'end-1c')
+
+        self.save_button.pack_forget()
+        self.reset_button.pack_forget()
+        self.edit_button.pack(side=tk.LEFT)
+        if not self.current_prompt == self.default_prompt:
+            self.reset_button.pack()
+
+    def on_reset(self):
+        self.edit_button.pack_forget()
+        self.reset_button.pack_forget()
+        self.save_button.pack(side=tk.LEFT)
+        self.reset_button.pack(side=tk.LEFT)
+        self.prompt_display.configure(state='normal')
+        self.prompt_display.delete('1.0', 'end')
+        self.prompt_display.insert('1.0', self.default_prompt)
 
 class AddFrame(ttk.Frame):
     def __init__(self, master):
@@ -279,17 +370,33 @@ class EditorFrame(AddFrame):
     def __init__(self, master):
         super().__init__(master)        
         if not api_key:
-            api_entry_box = CustomTextBox(self.frame, 'api_key', "Enter your OpenAI API key")
+            self.api_entry_box = CustomTextBox(self.frame, 'api_key', 'Please enter your OpenAI api key here', widget_type='entrybox', submitted_text='We will use {} as the API key')
 
-        self.prompt = CustomTextBox(self.frame, 'current_prompt', 'Curent Prompt for ChatGPT')
-        #self.gpt4_toggle = radio button and label
+        self.prompt = PromptDisplayBox(self.frame)
+        self.create_gpt4_toggle()
         
         DIVIDED = False
         
         if DIVIDED:
-            self.break_into_sections_box()
+            self.break_into_sectionse()
         else:
             self.display_current_project()
+
+    def update_gpt4_flag(self):
+        global PROJECT
+        PROJECT.gpt4_flag = self.gpt4_flag.get()
+        print(PROJECT.gpt4_flag)
+
+    def create_gpt4_toggle(self):
+        self.model_toggle_frame = tk.Frame(self.frame)
+        self.model_toggle_frame.pack()
+        self.gpt4_flag = tk.IntVar()
+        self.gpt4_flag.set(0)
+
+        gpt_turbo_button = tk.Radiobutton(self.model_toggle_frame, variable = self.gpt4_flag, command= self.update_gpt4_flag, text='GPT-3.5', value=0)
+        gpt_4_button = tk.Radiobutton(self.model_toggle_frame, variable=self.gpt4_flag, command=self.update_gpt4_flag, text= 'GPT-4', value=1)
+        gpt_turbo_button.pack(side=tk.LEFT)
+        gpt_4_button.pack(side=tk.LEFT)
 
 
     def display_current_project(self):
