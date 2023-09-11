@@ -6,6 +6,22 @@ import json
 from utility_functions import token_length
 import create_project
 
+def wrap_with_font(font, text, max_width = 600):
+    words = text.split()
+    wrapped_lines = []
+    line = ""
+    for word in words:
+        temp_line = line + " " + word if line else word
+
+        if font.measure(temp_line) <= max_width:
+            line = temp_line
+        else:
+            wrapped_lines.append(line)
+            line=word
+    wrapped_lines.append(line)
+    return "\n".join(wrapped_lines)
+
+
 def print_root_children():
     print(root.winfo_children())
 
@@ -34,7 +50,7 @@ def destroy_widgets(master):
     for widget in master.winfo_children():
             widget.destroy()
 
-def deactivate_window_scrollbar(self, event):
+def deactivate_window_scrollbar(event):
     root.unbind_all("<MouseWheel>")
 
 
@@ -352,68 +368,58 @@ class AddFrame(ttk.Frame):
         label = tk.Label(self)
         font = tkFont.Font(font=label.cget("font"))
         label.destroy()
-        words = text.split()
-        wrapped_lines = []
-        line = ""
-        for word in words:
-            temp_line = line + " " + word if line else word
-            if font.measure(temp_line) <= max_width:
-                line = temp_line
-            else:
-                wrapped_lines.append(line)
-                line=word
-        wrapped_lines.append(line)
-        return "\n".join(wrapped_lines)
+        return wrap_with_font(font, text, max_width)
+
 
 
 class EditorFrame(AddFrame):
     def __init__(self, master):
-        super().__init__(master)        
+        super().__init__(master)
         if not api_key:
             self.api_entry_box = CustomTextBox(self.frame, 'api_key', 'Please enter your OpenAI api key here', widget_type='entrybox', submitted_text='We will use {} as the API key')
 
         self.prompt = PromptDisplayBox(self.frame)
         self.create_gpt4_toggle()
         
-        DIVIDED = False
+        self.DIVIDED = False
         
-        if DIVIDED:
-            self.break_into_sectionse()
+        if not self.DIVIDED:
+            self.break_into_sections_box()
         else:
             self.display_current_project()
 
     def update_gpt4_flag(self):
-        global PROJECT
+        global PROJECT, button_exists
+        PROJECT.gpt4_flag = 0
         PROJECT.gpt4_flag = self.gpt4_flag.get()
         print(PROJECT.gpt4_flag)
 
+        if PROJECT.gpt4_flag and not self.button_exists == True:
+            text="Note: GPT-4 costs 20 times as much per token. Experiment to make sure you like the results before using it extensively"
+            customFont = tkFont.Font(family="Helvetica", size=10, weight="bold")
+            wrapped_text = self.label_word_wrapper(text)
+
+            self.gpt_buttons_label = tk.Label(self.toggle_frame, text = wrapped_text,
+                    font=customFont,
+                    fg="red")
+            self.gpt_buttons_label.pack(side=tk.BOTTOM)
+            self.button_exists = True
+
     def create_gpt4_toggle(self):
-        self.model_toggle_frame = tk.Frame(self.frame)
-        self.model_toggle_frame.pack()
+        self.toggle_frame = tk.Frame(self.frame)
+        self.toggle_frame.pack()
+        self.inner_toggle_frame = tk.Frame(self.toggle_frame)
+        self.inner_toggle_frame.pack()
+
         self.gpt4_flag = tk.IntVar()
         self.gpt4_flag.set(0)
-
-        gpt_turbo_button = tk.Radiobutton(self.model_toggle_frame, variable = self.gpt4_flag, command= self.update_gpt4_flag, text='GPT-3.5', value=0)
-        gpt_4_button = tk.Radiobutton(self.model_toggle_frame, variable=self.gpt4_flag, command=self.update_gpt4_flag, text= 'GPT-4', value=1)
-        gpt_turbo_button.pack(side=tk.LEFT)
-        gpt_4_button.pack(side=tk.LEFT)
+        self.button_exists = False
 
 
-    def display_current_project(self):
-        self.outer_project_frame = tk.Frame(self.frame)
-        self.outer_project_frame.pack()
-        title = tk.Label(self.outer_project_frame, text='Your Current Project')
-        title.pack()
-        frame = tk.Frame()
-        #frame interior
-        self.create_buttons()
-
-
-    def create_buttons(self):
-        #run_all_button 
-        #download_responses_to_txt_button
-        #save_project_button
-        pass
+        self.gpt_turbo_button = tk.Radiobutton(self.inner_toggle_frame, variable = self.gpt4_flag, command= self.update_gpt4_flag, text='GPT-3.5', value=0)
+        self.gpt_4_button = tk.Radiobutton(self.inner_toggle_frame, variable=self.gpt4_flag, command=self.update_gpt4_flag, text= 'GPT-4', value=1)
+        self.gpt_turbo_button.pack(side=tk.LEFT)
+        self.gpt_4_button.pack(side=tk.LEFT)
 
     def break_into_sections_box(self):
         #create frame
@@ -423,6 +429,40 @@ class EditorFrame(AddFrame):
         #create 'Chapter as divider toggle'
         DIVIDED = True
         pass
+
+    def display_current_project(self):
+        self.outer_project_frame = tk.Frame(self.frame)
+        self.outer_project_frame.pack()
+        title = tk.Label(self.outer_project_frame, text='Your Current Project')
+        title.pack()
+        inner_frame = tk.Frame(self.outer_project_frame, relief='raised', borderwidth=10)
+        label = tk.Label(inner_frame, text='placeholder')
+        inner_frame.pack()
+        label.pack()
+        #frame interior
+        self.create_buttons()
+
+
+    def create_buttons(self):
+        button_frame = tk.Frame(self.frame)
+        button_frame.pack()
+        self.run_all_button = tk.Button(button_frame, text = 'Run on all sections', command=self.run_all)
+        self.download_responses_to_txt_button = tk.Button(button_frame, text = 'Save as .txt file', command=self.download_responses_to_txt)
+        self.save_project_button = tk.Button(button_frame, text = 'Save Project', command=self.save_project)
+        
+        self.run_all_button.pack(side=tk.LEFT)
+        self.download_responses_to_txt_button.pack(side=tk.LEFT)
+        self.save_project_button.pack(side=tk.LEFT)
+
+    def run_all (self):
+        pass
+
+    def download_responses_to_txt(self):
+        pass
+
+    def save_project(self):
+        pass
+
 
 class BlurbFrame(AddFrame):
     pass
@@ -474,7 +514,7 @@ class MainInterface:
         self.notebook.add(self.blurb_frame, text='Create Blurbs')
 
 def start_program():
-    global PROJECT, root, loading_page, loading_page2, api_key
+    global PROJECT, root, loading_page, loading_page2, api_key, WARNING_FONT
     PROJECT = None
     api_key = None
     root = tk.Tk()
