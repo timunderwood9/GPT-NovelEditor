@@ -24,35 +24,36 @@ class Chapter:
         }
 
 class Project:
-    def __init__(self, title, author = None):
-        self.title = title
-        self.author = author
-        self.project_text = ""
+    def __init__(self, **kwargs):
         self.chapters = []
-
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        
     def add_chapter(self, chapter):
         self.chapters.append(chapter)
 
-    def to_dict(self):
+    def chapters_to_dict(self):
         return {
-            'title': self.title,
-            'author': self.author,
             'chapters': [chapter.to_dict() for chapter in self.chapters]
         }
+    
+    def get_attributes_as_dict(self):
+        return vars(self)
 
     def save(self, filename):
         with open(filename, 'w') as file:
-            json.dump(self.to_dict(), file)
+            json.dump(self.get_attributes_as_dict(), file)
 
     @staticmethod
     def load(filename):
         with open(filename, 'r') as file:
             data = json.load(file)
-            novel = Project(data['title'], data['author'])
-            for chapter_data in data['chapters']:
-                chapter = Chapter()
-                for scene_data in chapter_data['scenes']:
-                    scene = Scene(scene_data['scene_text'], scene_data['llm_results'])
-                    chapter.add_scene(scene)
-                novel.add_chapter(chapter)
-            return novel
+            return Project(**data)
+
+            
+            # for chapter_data in data['chapters']:
+            #     chapter = Chapter()
+            #     for scene_data in chapter_data['scenes']:
+            #         scene = Scene(scene_data['scene_text'], scene_data['llm_results'])
+            #         chapter.add_scene(scene)
+            #     novel.add_chapter(chapter)
