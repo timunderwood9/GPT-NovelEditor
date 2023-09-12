@@ -1,4 +1,7 @@
 import json
+from tiktoken import encoding_for_model
+import math
+import re
 
 class Scene:
     def __init__(self, scene_text, llm_results):
@@ -57,3 +60,49 @@ class Project:
             #         scene = Scene(scene_data['scene_text'], scene_data['llm_results'])
             #         chapter.add_scene(scene)
             #     novel.add_chapter(chapter)
+    
+    def split_text_into_chunks(self, text, max_chunk_size=2000, overlap=40):
+        chunks = []
+        index = 0
+        encoded_text = self.encode_text(text)
+        number_of_sections = 1
+        if len(encoded_text) > max_chunk_size:
+            number_of_sections = math.ceil(len(encoded_text)/(max_chunk_size+overlap))
+        chunk_size = math.ceil(len(encoded_text)/ number_of_sections) + overlap
+
+        while index < len(encoded_text):
+            next_index = index + chunk_size
+            if next_index < len(encoded_text):
+                # Look for the next period after the next_index, to break the text at a sentence
+                pattern = r"\b[a-z]+\."
+                m = re.search(pattern, encoded_text[next_index:])
+                if m:
+                    next_index += m.end()
+            decoded_chunk = self.decode_text(encoded_text[index:next_index])
+            chunks.append(decoded_chunk)
+            index = next_index
+        return chunks
+
+    def generate_chapters_by_splitting(self):
+        chunks = self.split_text_into_chunks(self.raw_text)
+        for chunk in chunks:
+            scene = Scene(chunk, None)
+            chapter = Chapter()
+            chapter.add_scene(scene)
+            self.add_chapter(chapter)
+    
+    @staticmethod
+    def create_project(project_title=None):
+        if project_title == None:
+            project_title = 'project'
+        project = Project()
+        project.title = project_title
+        return project
+    
+
+    def encode_text(self, text):
+        return encoding_for_model('gpt-4').encode(text)
+
+    def decode_text(self, text):
+        return encoding_for_model('gpt-4').decode(text)
+    

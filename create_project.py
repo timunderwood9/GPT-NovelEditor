@@ -12,7 +12,7 @@ def create_project(project_title):
         project_title = 'project'
     return project_class.Project(project_title)
 
-def split_text_into_chunks(text, chunk_size=2000, overlap=40):
+def split_text_into_chunks(text, max_chunk_size=2000, overlap=40):
     chunks = []
     index = 0
     encoded_text = encode_text(text)

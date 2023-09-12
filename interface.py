@@ -4,7 +4,7 @@ import tkinter.font as tkFont
 from functools import partial
 import json
 from utility_functions import token_length
-import create_project
+from project_class import Project
 
 def wrap_with_font(font, text, max_width = 600):
     words = text.split()
@@ -121,7 +121,7 @@ class LoadingPage:
     def new_project(title, window, entry_box, event):
         global PROJECT
         title=entry_box.get()
-        PROJECT = create_project.create_project(title)
+        PROJECT = Project.create_project(title)
         PROJECT.divided = False
         window.destroy()
         global loading_page2
@@ -454,7 +454,7 @@ class EditorFrame(AddFrame):
         print(PROJECT.divided)
         self.outer_project_frame = tk.Frame(self.frame)
         self.outer_project_frame.pack()
-        title = tk.Label(self.outer_project_frame, text='Your Current Project')
+        title = tk.Label(self.outer_project_frame, text=f'Your Current Project: {PROJECT.title}')
         title.pack()
         inner_frame = tk.Frame(self.outer_project_frame, relief='raised', borderwidth=10)
         label = tk.Label(inner_frame, text='placeholder')
@@ -498,17 +498,15 @@ class InputFrame(AddFrame):
         
         #Section headings that will be used for later features but I've dropped from my
         #minimum viable product version
-        self.key_information = CustomTextBox(self.frame, 'key_information', label_texts['key_information'])
-        self.key_information.change_submitted_text('Your key information has been saved.')
+        # self.key_information = CustomTextBox(self.frame, 'key_information', label_texts['key_information'])
+        # self.key_information.change_submitted_text('Your key information has been saved.')
         
-        self.reviews = CustomTextBox(self.frame, 'reviews', label_texts['reviews'])
-        self.reviews.change_submitted_text('Your example reviews have been saved.')
+        # self.reviews = CustomTextBox(self.frame, 'reviews', label_texts['reviews'])
+        # self.reviews.change_submitted_text('Your example reviews have been saved.')
 
-        self.blurbs = CustomTextBox(self.frame, 'sample_blurbs', label_texts['sample_blurbs'])
-        self.blurbs.change_submitted_text('Your example blurbs have been saved.')
-
-        self.test_scrolling = CustomTextBox(self.frame, 'not_relevant', 'This box is just here for testing purposes')
-        
+        # self.blurbs = CustomTextBox(self.frame, 'sample_blurbs', label_texts['sample_blurbs'])
+        # self.blurbs.change_submitted_text('Your example blurbs have been saved.')
+                
         self.bind_activate_window_scrollbar_to_textbox_labels()
 
     def fetch_label_texts(self):

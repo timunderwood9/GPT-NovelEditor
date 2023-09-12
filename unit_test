@@ -1,0 +1,38 @@
+import unittest
+import string
+import random
+from project_class import Project
+
+class TestSplitTextIntoChunks(unittest.TestCase):
+    
+    def random_string(self, length):
+        letters = string.ascii_letters + string.digits + string.punctuation + ' '
+        return ''.join(random.choice(letters) for i in range(length))
+    
+    def test_empty_text(self):
+        project = Project(title='TestProject')
+        self.assertEqual(project.split_text_into_chunks(''), [])
+    
+    def test_text_below_chunk_size(self):
+        project = Project(title='TestProject')
+        text = self.random_string(1000)
+        self.assertEqual(project.split_text_into_chunks(text, max_chunk_size=2000), [text])
+    
+    def test_large_text(self):
+        project = Project(title='TestProject')
+        text = self.random_string(5000)
+        chunks = project.split_text_into_chunks(text, max_chunk_size=2000)
+        
+        # Verify number of chunks
+        self.assertTrue(len(chunks) >= 2)
+        
+        # Verify chunk sizes
+        for chunk in chunks:
+            self.assertTrue(len(project.encode_text(chunk)) <= 2000)
+            
+        # Verify overlap
+        for i in range(len(chunks) - 1):
+            self.assertEqual(chunks[i][-40:], chunks[i + 1][:40])
+
+if __name__ == '__main__':
+    unittest.main()
