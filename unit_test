@@ -2,8 +2,14 @@ import unittest
 import string
 import random
 from project_class import Project
+from tiktoken import encoding_for_model
 
 class TestSplitTextIntoChunks(unittest.TestCase):
+    def setUp(self) -> None:
+        with open('test_novel.txt', 'r', encoding='utf-8') as f:
+            self.text = f.read()
+        
+        self.encoding = encoding_for_model('gpt-4')
     
     def random_string(self, length):
         letters = string.ascii_letters + string.digits + string.punctuation + ' '
@@ -20,7 +26,7 @@ class TestSplitTextIntoChunks(unittest.TestCase):
     
     def test_large_text(self):
         project = Project(title='TestProject')
-        text = self.random_string(5000)
+        text = self.text[:20000]
         chunks = project.split_text_into_chunks(text, max_chunk_size=2000)
         
         # Verify number of chunks
@@ -31,8 +37,10 @@ class TestSplitTextIntoChunks(unittest.TestCase):
             self.assertTrue(len(project.encode_text(chunk)) <= 2000)
             
         # Verify overlap
+        chunks = [self.encoding.encode(chunk) for chunk in chunks]
         for i in range(len(chunks) - 1):
             self.assertEqual(chunks[i][-40:], chunks[i + 1][:40])
+
 
 if __name__ == '__main__':
     unittest.main()

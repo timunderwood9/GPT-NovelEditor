@@ -71,16 +71,10 @@ class Project:
         chunk_size = math.ceil(len(encoded_text)/ number_of_sections) + overlap
 
         while index < len(encoded_text):
-            next_index = index + chunk_size
-            if next_index < len(encoded_text):
-                # Look for the next period after the next_index, to break the text at a sentence
-                pattern = r"\b[a-z]+\."
-                m = re.search(pattern, encoded_text[next_index:])
-                if m:
-                    next_index += m.end()
-            decoded_chunk = self.decode_text(encoded_text[index:next_index])
+            decoded_chunk= self.decode_text(encoded_text[index:index+chunk_size])
             chunks.append(decoded_chunk)
-            index = next_index
+            index += chunk_size - overlap
+
         return chunks
 
     def generate_chapters_by_splitting(self):
