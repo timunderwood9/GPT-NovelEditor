@@ -68,7 +68,7 @@ class OnSubmit:
     def title(frame, entry_box):
         title = entry_box.get()
         frame.pack_forget()
-        return create_project.create_project(title)
+        return Project.create_project(title)
 
     def text_box(frame, text_box):
         entered_text = text_box.get("1.0", tk.END)
@@ -140,7 +140,7 @@ class LoadingPage:
 
     def exit_app(self):
         root.quit()
-
+        
 class LoadingPage2:
     def __init__(self, master):
         destroy_widgets(master)
@@ -371,7 +371,27 @@ class AddFrame(ttk.Frame):
         label.destroy()
         return wrap_with_font(font, text, max_width)
 
+class ProjectDisplayBox:
+    def __init__(self, master):
+        self.frame = tk.Frame(master)
+        pass
 
+    def create_display(self):
+        for chapter in PROJECT.chapters:
+            for section in chapter.sections:
+                name = ''
+
+    #maybe stick the chapter name in the section name at creation?
+    def create_line(self, chapter, section):
+        name = f'{chapter.name}:{section.name}'
+        button_frame = tk.Frame(self.frame)
+
+    def display_processing_symbol(self):
+        pass
+
+    def display_processing_message(self):
+        pass
+    
 
 class EditorFrame(AddFrame):
     def __init__(self, master):
@@ -434,7 +454,7 @@ class EditorFrame(AddFrame):
         self.divide_text_buttons_frame = tk.Button(self.divide_frame)
         self.divide_text_buttons_frame.pack()
 
-        check_button = tk.Checkbutton(self.divide_text_buttons_frame, variable=self.chapter_divider_flag, command=self.set_chapter_divider_flag)
+        check_button = tk.Checkbutton(self.divide_text_buttons_frame, text="'Chapter' is the chapter divider", variable=self.chapter_divider_flag, command=self.set_chapter_divider_flag)
         check_button.pack(side=tk.LEFT)
 
         submit_button = tk.Button(self.divide_text_buttons_frame, text='Split your text into sections', command=self.submit_break_into_sections)
@@ -467,7 +487,7 @@ class EditorFrame(AddFrame):
         button_frame = tk.Frame(self.frame)
         button_frame.pack()
         self.run_all_button = tk.Button(button_frame, text = 'Run on all sections', command=self.run_all)
-        self.download_responses_to_txt_button = tk.Button(button_frame, text = 'Save as .txt file', command=self.download_responses_to_txt)
+        self.download_responses_to_txt_button = tk.Button(button_frame, text = 'Get PDF of responses', command=self.download_responses_to_txt)
         self.save_project_button = tk.Button(button_frame, text = 'Save Project', command=self.save_project)
         
         self.run_all_button.pack(side=tk.LEFT)
@@ -475,14 +495,22 @@ class EditorFrame(AddFrame):
         self.save_project_button.pack(side=tk.LEFT)
 
     def run_all (self):
+        PROJECT.send_all_sections_to_GPT()
+        self.display_currently_processing()
+        self.update_display_window()
+    
+    def display_currently_processing(self):
         pass
 
-    def download_responses_to_txt(self):
+    def update_display_window(self):
         pass
+
+    def download_responses_to_pdf(self):
+        PROJECT.create_pdf_of_gpt_outputs()
 
     def save_project(self):
-        pass
-
+        filename = ""
+        PROJECT.save(filename)
 
 class BlurbFrame(AddFrame):
     pass

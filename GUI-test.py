@@ -12,8 +12,13 @@ time.sleep(.05)
 
 interface.loading_page.enter_project_title()
 
-pyautogui.typewrite('Death in Solomnia')
+pyautogui.typewrite('The Missing Prince')
 pyautogui.typewrite(['enter'])
 
-interface.loading_page2.load_editing_page()
+with open ('test_novel.txt', 'r', encoding='utf-8') as f:
+    text = f.read()
+
+interface.PROJECT.project_text = text
+interface.loading_page2.load_input_page()
+
 
