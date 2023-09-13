@@ -487,24 +487,41 @@ class EditorFrame(AddFrame):
         self.gpt_4_button.pack(side=tk.LEFT)
 
     def break_into_sections_box(self):
-        self.divide_frame= tk.Frame(self.frame)
-        self.divide_frame.pack()
-        label = tk.Label(self.divide_frame, text = self.label_word_wrapper("We still need to break this project into sections small enough to be sent to GPT. You can break the text up at each capitalized 'Chapter'. Otherwise everything will be divided into equally sized sections of up to about 1500 words (2000 tokens) with an overlap of about forty words. This is how chapters will be divided also."))
-        if not PROJECT.project_text:
-            label = tk.Label(self.divide_frame, fg = 'red', borderwidth=3, font = ('helvetica', 12), text = self.label_word_wrapper("You need to enter a text for your project."))
-        label.pack()
+        # Check if the divide frame already exists
+        if not hasattr(self, 'divide_frame'):
+            self.divide_frame = tk.Frame(self.frame)
+            self.divide_frame.pack()
 
-        self.chapter_divider_flag = tk.BooleanVar()
-        self.chapter_divider_flag.set(False)
+        # Create or update label
+        if hasattr(self, 'label'):
+            if PROJECT.project_text:
+                self.label.config(text=self.label_word_wrapper("..."))
+            else:
+                self.label.config(fg='red', text=self.label_word_wrapper("You need to enter text..."))
+        else:
+            if PROJECT.project_text:
+                self.label = tk.Label(self.divide_frame, text=self.label_word_wrapper("We still need to break this project into sections small enough to be sent to GPT. You can break the text up at each capitalized 'Chapter'. Otherwise everything will be divided into equally sized sections of up to about 1500 words (2000 tokens) with an overlap of about forty words. This is how chapters will be divided also."))
+            else:
+                self.label = tk.Label(self.divide_frame, fg='red', text=self.label_word_wrapper("You need to enter text..."))
+            self.label.pack()
 
-        self.divide_text_buttons_frame = tk.Button(self.divide_frame)
-        self.divide_text_buttons_frame.pack()
+        # Check if the divide text buttons frame already exists
+        if not hasattr(self, 'divide_text_buttons_frame'):
+            self.divide_text_buttons_frame = tk.Frame(self.divide_frame)
+            self.divide_text_buttons_frame.pack()
 
-        check_button = tk.Checkbutton(self.divide_text_buttons_frame, text="'Chapter' is the chapter divider", variable=self.chapter_divider_flag, command= lambda : print(f'{self.chapter_divider_flag.get()}'))
-        check_button.pack(side=tk.LEFT)
+        # Check if the check button already exists
+        if not hasattr(self, 'check_button'):
+            self.chapter_divider_flag = tk.BooleanVar()
+            self.chapter_divider_flag.set(False)
+            self.check_button = tk.Checkbutton(self.divide_text_buttons_frame, text="'Chapter' is the chapter divider", variable=self.chapter_divider_flag, command=lambda: print(f'{self.chapter_divider_flag.get()}'))
+            self.check_button.pack(side=tk.LEFT)
 
-        submit_button = tk.Button(self.divide_text_buttons_frame, text='Split your text into sections', command=self.submit_break_into_sections)
-        submit_button.pack(side=tk.LEFT) 
+        # Check if the submit button already exists
+        if not hasattr(self, 'submit_button'):
+            self.submit_button = tk.Button(self.divide_text_buttons_frame, text='Split your text into sections', command=self.submit_break_into_sections)
+            self.submit_button.pack(side=tk.LEFT)
+
 
     def submit_break_into_sections(self):
         PROJECT.create_sections_and_chapters_from_text(self.chapter_divider_flag.get())
