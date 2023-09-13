@@ -20,5 +20,5 @@ with open ('test_novel.txt', 'r', encoding='utf-8') as f:
 
 interface.PROJECT.project_text = text
 interface.loading_page2.load_input_page()
-
+interface.go_to_editing()
 

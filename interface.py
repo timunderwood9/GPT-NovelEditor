@@ -21,6 +21,10 @@ def wrap_with_font(font, text, max_width = 600):
     wrapped_lines.append(line)
     return "\n".join(wrapped_lines)
 
+#if you add or change number of tabs, this will break
+def go_to_editing():
+    root.notebook.select(1)
+
 
 def print_root_children():
     print(root.winfo_children())
@@ -220,7 +224,6 @@ class CustomTextBox:
     
     def edit_command(self):
         destroy_widgets(self.frame)
-
         self.build_inner_widgets()
 
     def build_inner_widgets(self):
@@ -230,6 +233,10 @@ class CustomTextBox:
         if self.widget_type == 'textbox':
             self.textbox = tk.Text(self.frame, height=5, wrap=tk.WORD)
             self.textbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            existing_text = getattr(PROJECT, self.property_name, None)
+            if existing_text:
+                self.textbox.insert(1.0, existing_text)
+
             self.textbox.bind("<FocusIn>", deactivate_window_scrollbar)
 
         elif self.widget_type == 'entrybox':
@@ -445,7 +452,7 @@ class EditorFrame(AddFrame):
     def break_into_sections_box(self):
         self.divide_frame= tk.Frame(self.frame)
         self.divide_frame.pack()
-        label = tk.Label(self.divide_frame, text = self.label_word_wrapper("We still need to break this project into sections small enough to be sent to GPT. You can break the text up at each capitalized 'Chapter'. Otherwise everything will be divided into equally sized sections with an overlap of fifty characters. This is how chapters will be divided also."))
+        label = tk.Label(self.divide_frame, text = self.label_word_wrapper("We still need to break this project into sections small enough to be sent to GPT. You can break the text up at each capitalized 'Chapter'. Otherwise everything will be divided into equally sized sections of up to about 1500 words (2000 tokens) with an overlap of about forty words. This is how chapters will be divided also."))
         label.pack()
 
         self.chapter_divider_flag = tk.BooleanVar()
@@ -454,17 +461,15 @@ class EditorFrame(AddFrame):
         self.divide_text_buttons_frame = tk.Button(self.divide_frame)
         self.divide_text_buttons_frame.pack()
 
-        check_button = tk.Checkbutton(self.divide_text_buttons_frame, text="'Chapter' is the chapter divider", variable=self.chapter_divider_flag, command=self.set_chapter_divider_flag)
+        check_button = tk.Checkbutton(self.divide_text_buttons_frame, text="'Chapter' is the chapter divider", variable=self.chapter_divider_flag, command= lambda : print(f'{self.chapter_divider_flag.get()}'))
         check_button.pack(side=tk.LEFT)
 
         submit_button = tk.Button(self.divide_text_buttons_frame, text='Split your text into sections', command=self.submit_break_into_sections)
-        submit_button.pack(side=tk.LEFT)        
-
-    def set_chapter_divider_flag(self):
-        self.chapter_divider_value = self.chapter_divider_flag.get()
-        print (self.chapter_divider_value)
+        submit_button.pack(side=tk.LEFT) 
 
     def submit_break_into_sections(self):
+        PROJECT.create_sections_and_chapters_from_text(self.chapter_divider_flag.get())
+        
         PROJECT.divided = True
         self.divide_frame.destroy()
         self.display_current_project()
@@ -487,11 +492,11 @@ class EditorFrame(AddFrame):
         button_frame = tk.Frame(self.frame)
         button_frame.pack()
         self.run_all_button = tk.Button(button_frame, text = 'Run on all sections', command=self.run_all)
-        self.download_responses_to_txt_button = tk.Button(button_frame, text = 'Get PDF of responses', command=self.download_responses_to_txt)
+        self.download_responses_to_pdf_button = tk.Button(button_frame, text = 'Get PDF of responses', command=self.download_responses_to_pdf)
         self.save_project_button = tk.Button(button_frame, text = 'Save Project', command=self.save_project)
         
         self.run_all_button.pack(side=tk.LEFT)
-        self.download_responses_to_txt_button.pack(side=tk.LEFT)
+        self.download_responses_to_pdf_button.pack(side=tk.LEFT)
         self.save_project_button.pack(side=tk.LEFT)
 
     def run_all (self):
@@ -523,7 +528,7 @@ class InputFrame(AddFrame):
 
         label_texts = self.fetch_label_texts()
         self.project_text = CustomTextBox(self.frame, 'project_text', label_texts['project_text'])
-        
+
         #Section headings that will be used for later features but I've dropped from my
         #minimum viable product version
         # self.key_information = CustomTextBox(self.frame, 'key_information', label_texts['key_information'])
@@ -534,7 +539,9 @@ class InputFrame(AddFrame):
 
         # self.blurbs = CustomTextBox(self.frame, 'sample_blurbs', label_texts['sample_blurbs'])
         # self.blurbs.change_submitted_text('Your example blurbs have been saved.')
-                
+        
+        self.go_to_editing_page_button()
+
         self.bind_activate_window_scrollbar_to_textbox_labels()
 
     def fetch_label_texts(self):
@@ -544,12 +551,20 @@ class InputFrame(AddFrame):
         label_texts['reviews'] = self.label_word_wrapper('OPTIONAL: Put reviews of novels in your genre here. ChatGPT will later use it to identify key features of books in it that readers like. This can be used to improve the editing suggestions and optimize the blurb.')
         label_texts['sample_blurbs'] = self.label_word_wrapper('OPTIONAL: Put examples of blurbs from books in your genre so that chatGPT can use their example to generate a better blurb for you. This only is used for blurb writing.')
         return label_texts
+    
+    def go_to_editing_page_button(self):
+        button_frame = tk.Frame(self.frame)
+        button_frame.pack()
+        to_editing_page = tk.Button(button_frame, text='Go to Editing Page', command=go_to_editing)
+        to_editing_page.pack()
 
 
 class MainInterface:
     def __init__(self, master) -> None:
-        self.notebook = ttk.Notebook(master)
-        self.notebook.pack(expand=True, fill="both")
+        root.notebook = ttk.Notebook(master)
+        root.notebook.pack(expand=True, fill="both")
+
+        self.notebook = root.notebook
 
         self.editing_frame = EditorFrame(self.notebook)
         self.blurb_frame = ttk.Frame(self.notebook)

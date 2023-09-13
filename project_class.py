@@ -2,9 +2,10 @@ import json
 from tiktoken import encoding_for_model
 import math
 import openai
+import re
 
 class Section:
-    def __init__(self, section_text, llm_results, name):
+    def __init__(self, section_text, name, llm_results = None):
         self.name = name
         self.section_text = section_text
         self.llm_results = llm_results
@@ -16,9 +17,10 @@ class Section:
         }
 
 class Chapter:
-    def __init__(self, name):
+    def __init__(self, name, text):
         self.sections = []
         self.name = name
+        self.text = text
 
     def add_section(self, section):
         self.sections.append(section)
@@ -30,7 +32,9 @@ class Chapter:
 
 class Project:
     def __init__(self, **kwargs):
+        self.title = ""
         self.chapters = []
+        self.project_text = ""
         for key, value in kwargs.items():
             setattr(self, key, value)
         
@@ -88,23 +92,49 @@ class Project:
 
         return chunks
 
-    #this will take the whole raw text and return a list of sections
-    def split_chapter(self, text):
-        chunks = self.split_text_into_chunks(text)
+    #This creates a chapter
+    def split_chapter(self, chapter):
+        chunks = self.split_text_into_chunks(chapter.text)
+        i = 1
         for chunk in chunks:
-            scene = Section(chunk, None)
-            chapter = Chapter()
-            chapter.add_section(scene)
+            section_name = f'{chapter.name}: Section {i}'
+            section = Section(chunk, section_name)
+            chapter.add_section(section)
+            i += 1
+
+    def split_all_chapters(self):
+        for chapter in self.chapters:
+            self.split_chapter(chapter)
+
+    def create_sections_and_chapters_from_text(self, flag, divider = 'Chapter'):
+        if not flag:
+            chapter = Chapter(f'{self.title}', self.project_text)
             self.add_chapter(chapter)
-    
-    def generate_chapter_list(self):
+        
+        else:
+            i = 0
+            start_index = 0
+            for match in re.finditer(divider, self.project_text):
+                end_index = match.start()
+                chapter_name = f'Chapter {i}'
+                chapter = Chapter(chapter_name, self.project_text[start_index:end_index])
+                self.add_chapter(chapter)
+                i += 1
+        
+        self.split_all_chapters()
+        #test code
+        for chapter in self.chapters:
+            print(chapter.name, '\n')
+            for section in chapter.sections:
+                print(section.name)
+        
+        
         #code to get the chapter texts based on the chapter divider
         #code to name the chapters
         #code to name the scenes
-        pass
-
-    def split_all_chapters(self):
-        pass
+        
+        
+        self.split_all_chapters()
 
     def send_section_to_GPT(self, section):
         text = section.section_text
