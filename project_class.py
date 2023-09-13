@@ -116,26 +116,25 @@ class Project:
             start_index = 0
             for match in re.finditer(divider, self.project_text):
                 end_index = match.start()
+                if end_index-start_index <= 200:
+                    start_index = end_index
+                    continue
                 chapter_name = f'Chapter {i}'
                 chapter = Chapter(chapter_name, self.project_text[start_index:end_index])
                 self.add_chapter(chapter)
                 i += 1
+                start_index = end_index
         
         self.split_all_chapters()
         #test code
         for chapter in self.chapters:
-            print(chapter.name, '\n')
             for section in chapter.sections:
                 print(section.name)
+        print (self.chapters[1].text[:100])
+        print (self.chapters[2].text[:100])
+        print (self.chapters[3].text[:100])
+        print (self.chapters[4].text[:100])
         
-        
-        #code to get the chapter texts based on the chapter divider
-        #code to name the chapters
-        #code to name the scenes
-        
-        
-        self.split_all_chapters()
-
     def send_section_to_GPT(self, section):
         text = section.section_text
         model = 'gpt-3.5-turbo'
