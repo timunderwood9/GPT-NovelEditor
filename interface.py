@@ -389,6 +389,9 @@ class ProjectDisplayLine:
                                 bg="#DDDDDD", relief="groove")
         self.view_output_button = tk.Button(parent, text='View Outputs', command=self.view_output, 
                                 bg="#DDDDDD", relief="groove")
+        self.no_outputs_button = tk.Button(parent, text='No Outputs', command=None, 
+                                   bg="#AAAAAA", relief="sunken")
+        
         
         parent.grid_columnconfigure(0, weight=4)  # Label column
         parent.grid_columnconfigure(1, weight=1)  # view_text column
@@ -401,6 +404,8 @@ class ProjectDisplayLine:
         self.generate_output_button.grid(row=row, column=2, sticky='nsew')
         if self.section.llm_outputs:
             self.view_output_button.grid(row=row, column=3, sticky= 'nsew')
+        else: self.no_outputs_button.grid(row=row, column=3, sticky='nsew')
+
 
     def view_text(self):
         pass
