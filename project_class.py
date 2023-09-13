@@ -5,10 +5,10 @@ import openai
 import re
 
 class Section:
-    def __init__(self, section_text, name, llm_results = None):
+    def __init__(self, section_text, name, llm_outputs = None):
         self.name = name
         self.section_text = section_text
-        self.llm_results = llm_results
+        self.llm_outputs = llm_outputs
 
     def to_dict(self):
         return {
@@ -126,14 +126,6 @@ class Project:
                 start_index = end_index
         
         self.split_all_chapters()
-        #test code
-        for chapter in self.chapters:
-            for section in chapter.sections:
-                print(section.name)
-        print (self.chapters[1].text[:100])
-        print (self.chapters[2].text[:100])
-        print (self.chapters[3].text[:100])
-        print (self.chapters[4].text[:100])
         
     def send_section_to_GPT(self, section):
         text = section.section_text

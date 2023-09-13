@@ -378,15 +378,52 @@ class AddFrame(ttk.Frame):
         label.destroy()
         return wrap_with_font(font, text, max_width)
 
+class ProjectDisplayLine:
+    def __init__(self, parent, section):
+        self.section = section
+        self.parent = parent
+        self.label = tk.Label(parent, text=section.name, padx=10, borderwidth=1, relief='solid')
+        self.view_text_button = tk.Button(parent, text='View Text', command=self.view_text, 
+                                bg="#DDDDDD", relief="groove")
+        self.generate_output_button = tk.Button(parent, text='Generate', command=self.generate_output, 
+                                bg="#DDDDDD", relief="groove")
+        self.view_output_button = tk.Button(parent, text='View Outputs', command=self.view_output, 
+                                bg="#DDDDDD", relief="groove")
+        
+        parent.grid_columnconfigure(0, weight=4)  # Label column
+        parent.grid_columnconfigure(1, weight=1)  # view_text column
+        parent.grid_columnconfigure(2, weight=1)  # generate column
+        parent.grid_columnconfigure(3, weight=1)  # view_output column
+
+    def place_in_grid(self, row):
+        self.label.grid(row=row, column=0, sticky='nsew')
+        self.view_text_button.grid(row=row, column=1, sticky='nsew')
+        self.generate_output_button.grid(row=row, column=2, sticky='nsew')
+        if self.section.llm_outputs:
+            self.view_output_button.grid(row=row, column=3, sticky= 'nsew')
+
+    def view_text(self):
+        pass
+
+    def view_output(self):
+        pass
+
+    def generate_output(self):
+        pass
+
+
 class ProjectDisplayBox:
     def __init__(self, master):
         self.frame = tk.Frame(master)
-        pass
-
-    def create_display(self):
+        self.frame.pack()
+        self.lines = []
+        i = 0
         for chapter in PROJECT.chapters:
             for section in chapter.sections:
-                name = ''
+                line = ProjectDisplayLine(self.frame, section)
+                line.place_in_grid(i)
+                i += 1
+                self.lines.append(line)
 
     #maybe stick the chapter name in the section name at creation?
     def create_line(self, chapter, section):
@@ -453,6 +490,8 @@ class EditorFrame(AddFrame):
         self.divide_frame= tk.Frame(self.frame)
         self.divide_frame.pack()
         label = tk.Label(self.divide_frame, text = self.label_word_wrapper("We still need to break this project into sections small enough to be sent to GPT. You can break the text up at each capitalized 'Chapter'. Otherwise everything will be divided into equally sized sections of up to about 1500 words (2000 tokens) with an overlap of about forty words. This is how chapters will be divided also."))
+        if not PROJECT.project_text:
+            label = tk.Label(self.divide_frame, fg = 'red', borderwidth=3, font = ('helvetica', 12), text = self.label_word_wrapper("You need to enter a text for your project."))
         label.pack()
 
         self.chapter_divider_flag = tk.BooleanVar()
@@ -469,26 +508,22 @@ class EditorFrame(AddFrame):
 
     def submit_break_into_sections(self):
         PROJECT.create_sections_and_chapters_from_text(self.chapter_divider_flag.get())
-        
         PROJECT.divided = True
+
         self.divide_frame.destroy()
         self.display_current_project()
         
 
     def display_current_project(self):
-        print(PROJECT.divided)
         self.outer_project_frame = tk.Frame(self.frame)
         self.outer_project_frame.pack()
         title = tk.Label(self.outer_project_frame, text=f'Your Current Project: {PROJECT.title}')
         title.pack()
-        inner_frame = tk.Frame(self.outer_project_frame, relief='raised', borderwidth=10)
-        label = tk.Label(inner_frame, text='placeholder')
-        inner_frame.pack()
-        label.pack()
-        self.create_buttons()
+        self.display = ProjectDisplayBox(self.outer_project_frame)
+        self.create_buttons_below_display()
 
 
-    def create_buttons(self):
+    def create_buttons_below_display(self):
         button_frame = tk.Frame(self.frame)
         button_frame.pack()
         self.run_all_button = tk.Button(button_frame, text = 'Run on all sections', command=self.run_all)
