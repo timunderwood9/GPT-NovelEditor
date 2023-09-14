@@ -4,7 +4,7 @@ import tkinter.font as tkFont
 from functools import partial
 import json
 from utility_functions import token_length
-import create_project
+from project_class import Project
 
 def wrap_with_font(font, text, max_width = 600):
     words = text.split()
@@ -20,6 +20,10 @@ def wrap_with_font(font, text, max_width = 600):
             line=word
     wrapped_lines.append(line)
     return "\n".join(wrapped_lines)
+
+#if you add or change number of tabs, this will break
+def go_to_editing():
+    root.notebook.select(1)
 
 
 def print_root_children():
@@ -68,7 +72,7 @@ class OnSubmit:
     def title(frame, entry_box):
         title = entry_box.get()
         frame.pack_forget()
-        return create_project.create_project(title)
+        return Project.create_project(title)
 
     def text_box(frame, text_box):
         entered_text = text_box.get("1.0", tk.END)
@@ -121,7 +125,7 @@ class LoadingPage:
     def new_project(title, window, entry_box, event):
         global PROJECT
         title=entry_box.get()
-        PROJECT = create_project.create_project(title)
+        PROJECT = Project.create_project(title)
         PROJECT.divided = False
         window.destroy()
         global loading_page2
@@ -140,7 +144,7 @@ class LoadingPage:
 
     def exit_app(self):
         root.quit()
-
+        
 class LoadingPage2:
     def __init__(self, master):
         destroy_widgets(master)
@@ -220,7 +224,6 @@ class CustomTextBox:
     
     def edit_command(self):
         destroy_widgets(self.frame)
-
         self.build_inner_widgets()
 
     def build_inner_widgets(self):
@@ -230,6 +233,10 @@ class CustomTextBox:
         if self.widget_type == 'textbox':
             self.textbox = tk.Text(self.frame, height=5, wrap=tk.WORD)
             self.textbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            existing_text = getattr(PROJECT, self.property_name, None)
+            if existing_text:
+                self.textbox.insert(1.0, existing_text)
+
             self.textbox.bind("<FocusIn>", deactivate_window_scrollbar)
 
         elif self.widget_type == 'entrybox':
@@ -371,7 +378,69 @@ class AddFrame(ttk.Frame):
         label.destroy()
         return wrap_with_font(font, text, max_width)
 
+class ProjectDisplayLine:
+    def __init__(self, parent, section):
+        self.section = section
+        self.parent = parent
+        self.label = tk.Label(parent, text=section.name, padx=10, borderwidth=1, relief='solid')
+        self.view_text_button = tk.Button(parent, text='View Text', command=self.view_text, 
+                                bg="#DDDDDD", relief="groove")
+        self.generate_output_button = tk.Button(parent, text='Generate', command=self.generate_output, 
+                                bg="#DDDDDD", relief="groove")
+        self.view_output_button = tk.Button(parent, text='View Outputs', command=self.view_output, 
+                                bg="#DDDDDD", relief="groove")
+        self.no_outputs_button = tk.Button(parent, text='No Outputs', command=None, 
+                                   bg="#AAAAAA", relief="sunken")
+        
+        
+        parent.grid_columnconfigure(0, weight=4)  # Label column
+        parent.grid_columnconfigure(1, weight=1)  # view_text column
+        parent.grid_columnconfigure(2, weight=1)  # generate column
+        parent.grid_columnconfigure(3, weight=1)  # view_output column
 
+    def place_in_grid(self, row):
+        self.label.grid(row=row, column=0, sticky='nsew')
+        self.view_text_button.grid(row=row, column=1, sticky='nsew')
+        self.generate_output_button.grid(row=row, column=2, sticky='nsew')
+        if self.section.llm_outputs:
+            self.view_output_button.grid(row=row, column=3, sticky= 'nsew')
+        else: self.no_outputs_button.grid(row=row, column=3, sticky='nsew')
+
+
+    def view_text(self):
+        pass
+
+    def view_output(self):
+        pass
+
+    def generate_output(self):
+        pass
+
+
+class ProjectDisplayBox:
+    def __init__(self, master):
+        self.frame = tk.Frame(master)
+        self.frame.pack()
+        self.lines = []
+        i = 0
+        for chapter in PROJECT.chapters:
+            for section in chapter.sections:
+                line = ProjectDisplayLine(self.frame, section)
+                line.place_in_grid(i)
+                i += 1
+                self.lines.append(line)
+
+    #maybe stick the chapter name in the section name at creation?
+    def create_line(self, chapter, section):
+        name = f'{chapter.name}:{section.name}'
+        button_frame = tk.Frame(self.frame)
+
+    def display_processing_symbol(self):
+        pass
+
+    def display_processing_message(self):
+        pass
+    
 
 class EditorFrame(AddFrame):
     def __init__(self, master):
@@ -388,6 +457,10 @@ class EditorFrame(AddFrame):
             self.break_into_sections_box()
         else: 
             self.display_current_project()
+        
+        self.bind_activate_window_scrollbar_to_textbox_labels()
+
+
 
     def update_gpt4_flag(self):
         global button_exists
@@ -423,66 +496,91 @@ class EditorFrame(AddFrame):
         self.gpt_4_button.pack(side=tk.LEFT)
 
     def break_into_sections_box(self):
-        self.divide_frame= tk.Frame(self.frame)
-        self.divide_frame.pack()
-        label = tk.Label(self.divide_frame, text = self.label_word_wrapper("We still need to break this project into sections small enough to be sent to GPT. You can break the text up at each capitalized 'Chapter'. Otherwise everything will be divided into equally sized sections with an overlap of fifty characters. This is how chapters will be divided also."))
-        label.pack()
+        # Check if the divide frame already exists
+        if not hasattr(self, 'divide_frame'):
+            self.divide_frame = tk.Frame(self.frame)
+            self.divide_frame.pack()
 
-        self.chapter_divider_flag = tk.BooleanVar()
-        self.chapter_divider_flag.set(False)
+        # Create or update label
+        if hasattr(self, 'label'):
+            if PROJECT.project_text:
+                self.label.config(text=self.label_word_wrapper("..."))
+            else:
+                self.label.config(fg='red', text=self.label_word_wrapper("You need to enter text..."))
+        else:
+            if PROJECT.project_text:
+                self.label = tk.Label(self.divide_frame, text=self.label_word_wrapper("We still need to break this project into sections small enough to be sent to GPT. You can break the text up at each capitalized 'Chapter'. Otherwise everything will be divided into equally sized sections of up to about 1500 words (2000 tokens) with an overlap of about forty words. This is how chapters will be divided also."))
+            else:
+                self.label = tk.Label(self.divide_frame, fg='red', text=self.label_word_wrapper("You need to enter text..."))
+            self.label.pack()
 
-        self.divide_text_buttons_frame = tk.Button(self.divide_frame)
-        self.divide_text_buttons_frame.pack()
+        # Check if the divide text buttons frame already exists
+        if not hasattr(self, 'divide_text_buttons_frame'):
+            self.divide_text_buttons_frame = tk.Frame(self.divide_frame)
+            self.divide_text_buttons_frame.pack()
 
-        check_button = tk.Checkbutton(self.divide_text_buttons_frame, variable=self.chapter_divider_flag, command=self.set_chapter_divider_flag)
-        check_button.pack(side=tk.LEFT)
+        # Check if the check button already exists
+        if not hasattr(self, 'check_button'):
+            self.chapter_divider_flag = tk.BooleanVar()
+            self.chapter_divider_flag.set(False)
+            self.check_button = tk.Checkbutton(self.divide_text_buttons_frame, text="'Chapter' is the chapter divider", variable=self.chapter_divider_flag, command=lambda: print(f'{self.chapter_divider_flag.get()}'))
+            self.check_button.pack(side=tk.LEFT)
 
-        submit_button = tk.Button(self.divide_text_buttons_frame, text='Split your text into sections', command=self.submit_break_into_sections)
-        submit_button.pack(side=tk.LEFT)        
+        # Check if the submit button already exists
+        if not hasattr(self, 'submit_button'):
+            self.submit_button = tk.Button(self.divide_text_buttons_frame, text='Split your text into sections', command=self.submit_break_into_sections)
+            self.submit_button.pack(side=tk.LEFT)
 
-    def set_chapter_divider_flag(self):
-        self.chapter_divider_value = self.chapter_divider_flag.get()
-        print (self.chapter_divider_value)
 
     def submit_break_into_sections(self):
+        PROJECT.create_sections_and_chapters_from_text(self.chapter_divider_flag.get())
         PROJECT.divided = True
+
         self.divide_frame.destroy()
         self.display_current_project()
         
+        
 
     def display_current_project(self):
-        print(PROJECT.divided)
         self.outer_project_frame = tk.Frame(self.frame)
         self.outer_project_frame.pack()
-        title = tk.Label(self.outer_project_frame, text='Your Current Project')
+        title = tk.Label(self.outer_project_frame, text=f'Your Current Project: {PROJECT.title}')
         title.pack()
-        inner_frame = tk.Frame(self.outer_project_frame, relief='raised', borderwidth=10)
-        label = tk.Label(inner_frame, text='placeholder')
-        inner_frame.pack()
-        label.pack()
-        self.create_buttons()
+        self.create_project_buttons(self.outer_project_frame)
+        self.display = ProjectDisplayBox(self.outer_project_frame)
+        self.create_project_buttons(self.outer_project_frame)
+        self.bind_all("<MouseWheel>", self.mouse_scroll)
 
 
-    def create_buttons(self):
-        button_frame = tk.Frame(self.frame)
+
+    def create_project_buttons(self,master):
+        button_frame = tk.Frame(master)
         button_frame.pack()
         self.run_all_button = tk.Button(button_frame, text = 'Run on all sections', command=self.run_all)
-        self.download_responses_to_txt_button = tk.Button(button_frame, text = 'Save as .txt file', command=self.download_responses_to_txt)
+        self.download_responses_to_pdf_button = tk.Button(button_frame, text = 'Get PDF of responses', command=self.download_responses_to_pdf)
         self.save_project_button = tk.Button(button_frame, text = 'Save Project', command=self.save_project)
         
         self.run_all_button.pack(side=tk.LEFT)
-        self.download_responses_to_txt_button.pack(side=tk.LEFT)
+        self.download_responses_to_pdf_button.pack(side=tk.LEFT)
         self.save_project_button.pack(side=tk.LEFT)
 
     def run_all (self):
+        PROJECT.send_all_sections_to_GPT()
+        self.display_currently_processing()
+        self.update_display_window()
+    
+    def display_currently_processing(self):
         pass
 
-    def download_responses_to_txt(self):
+    def update_display_window(self):
         pass
+
+    def download_responses_to_pdf(self):
+        PROJECT.create_pdf_of_gpt_outputs()
 
     def save_project(self):
-        pass
-
+        filename = ""
+        PROJECT.save(filename)
 
 class BlurbFrame(AddFrame):
     pass
@@ -495,20 +593,20 @@ class InputFrame(AddFrame):
 
         label_texts = self.fetch_label_texts()
         self.project_text = CustomTextBox(self.frame, 'project_text', label_texts['project_text'])
-        
+
         #Section headings that will be used for later features but I've dropped from my
         #minimum viable product version
-        self.key_information = CustomTextBox(self.frame, 'key_information', label_texts['key_information'])
-        self.key_information.change_submitted_text('Your key information has been saved.')
+        # self.key_information = CustomTextBox(self.frame, 'key_information', label_texts['key_information'])
+        # self.key_information.change_submitted_text('Your key information has been saved.')
         
-        self.reviews = CustomTextBox(self.frame, 'reviews', label_texts['reviews'])
-        self.reviews.change_submitted_text('Your example reviews have been saved.')
+        # self.reviews = CustomTextBox(self.frame, 'reviews', label_texts['reviews'])
+        # self.reviews.change_submitted_text('Your example reviews have been saved.')
 
-        self.blurbs = CustomTextBox(self.frame, 'sample_blurbs', label_texts['sample_blurbs'])
-        self.blurbs.change_submitted_text('Your example blurbs have been saved.')
-
-        self.test_scrolling = CustomTextBox(self.frame, 'not_relevant', 'This box is just here for testing purposes')
+        # self.blurbs = CustomTextBox(self.frame, 'sample_blurbs', label_texts['sample_blurbs'])
+        # self.blurbs.change_submitted_text('Your example blurbs have been saved.')
         
+        self.go_to_editing_page_button()
+
         self.bind_activate_window_scrollbar_to_textbox_labels()
 
     def fetch_label_texts(self):
@@ -518,12 +616,20 @@ class InputFrame(AddFrame):
         label_texts['reviews'] = self.label_word_wrapper('OPTIONAL: Put reviews of novels in your genre here. ChatGPT will later use it to identify key features of books in it that readers like. This can be used to improve the editing suggestions and optimize the blurb.')
         label_texts['sample_blurbs'] = self.label_word_wrapper('OPTIONAL: Put examples of blurbs from books in your genre so that chatGPT can use their example to generate a better blurb for you. This only is used for blurb writing.')
         return label_texts
+    
+    def go_to_editing_page_button(self):
+        button_frame = tk.Frame(self.frame)
+        button_frame.pack()
+        to_editing_page = tk.Button(button_frame, text='Go to Editing Page', command=go_to_editing)
+        to_editing_page.pack()
 
 
 class MainInterface:
     def __init__(self, master) -> None:
-        self.notebook = ttk.Notebook(master)
-        self.notebook.pack(expand=True, fill="both")
+        root.notebook = ttk.Notebook(master)
+        root.notebook.pack(expand=True, fill="both")
+
+        self.notebook = root.notebook
 
         self.editing_frame = EditorFrame(self.notebook)
         self.blurb_frame = ttk.Frame(self.notebook)
