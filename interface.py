@@ -122,7 +122,6 @@ class LoadingPage:
         global PROJECT
         title=entry_box.get()
         PROJECT = create_project.create_project(title)
-        PROJECT.divided = False
         window.destroy()
         global loading_page2
         loading_page2 = LoadingPage2(root)
@@ -265,7 +264,7 @@ class PromptDisplayBox:
         self.generate_prompt_display(self.current_prompt)
 
     def generate_prompt_display(self, prompt_text):
-        self.prompt_display = tk.Text(self.frame, height = 5, wrap = 'word')
+        self.prompt_display = tk.Text(self.frame, height = 8, wrap = 'word')
         self.prompt_display.pack()
         self.prompt_display.insert('1.0', prompt_text)
         self.prompt_display.configure(state='disabled')
@@ -376,21 +375,21 @@ class AddFrame(ttk.Frame):
 class EditorFrame(AddFrame):
     def __init__(self, master):
         super().__init__(master)
-        global PROJECT
-        self.divided = PROJECT.divided
-            
         if not api_key:
             self.api_entry_box = CustomTextBox(self.frame, 'api_key', 'Please enter your OpenAI api key here', widget_type='entrybox', submitted_text='We will use {} as the API key')
 
         self.prompt = PromptDisplayBox(self.frame)
         self.create_gpt4_toggle()
-        if not self.divided: 
+        
+        self.DIVIDED = False
+        
+        if not self.DIVIDED:
             self.break_into_sections_box()
-        else: 
+        else:
             self.display_current_project()
 
     def update_gpt4_flag(self):
-        global button_exists
+        global PROJECT, button_exists
         PROJECT.gpt4_flag = 0
         PROJECT.gpt4_flag = self.gpt4_flag.get()
         print(PROJECT.gpt4_flag)
@@ -423,35 +422,15 @@ class EditorFrame(AddFrame):
         self.gpt_4_button.pack(side=tk.LEFT)
 
     def break_into_sections_box(self):
-        self.divide_frame= tk.Frame(self.frame)
-        self.divide_frame.pack()
-        label = tk.Label(self.divide_frame, text = self.label_word_wrapper("We still need to break this project into sections small enough to be sent to GPT. You can break the text up at each capitalized 'Chapter'. Otherwise everything will be divided into equally sized sections with an overlap of fifty characters. This is how chapters will be divided also."))
-        label.pack()
-
-        self.chapter_divider_flag = tk.BooleanVar()
-        self.chapter_divider_flag.set(False)
-
-        self.divide_text_buttons_frame = tk.Button(self.divide_frame)
-        self.divide_text_buttons_frame.pack()
-
-        check_button = tk.Checkbutton(self.divide_text_buttons_frame, variable=self.chapter_divider_flag, command=self.set_chapter_divider_flag)
-        check_button.pack(side=tk.LEFT)
-
-        submit_button = tk.Button(self.divide_text_buttons_frame, text='Split your text into sections', command=self.submit_break_into_sections)
-        submit_button.pack(side=tk.LEFT)        
-
-    def set_chapter_divider_flag(self):
-        self.chapter_divider_value = self.chapter_divider_flag.get()
-        print (self.chapter_divider_value)
-
-    def submit_break_into_sections(self):
-        PROJECT.divided = True
-        self.divide_frame.destroy()
-        self.display_current_project()
+        #create frame
         
+        #create submit button
+
+        #create 'Chapter as divider toggle'
+        DIVIDED = True
+        pass
 
     def display_current_project(self):
-        print(PROJECT.divided)
         self.outer_project_frame = tk.Frame(self.frame)
         self.outer_project_frame.pack()
         title = tk.Label(self.outer_project_frame, text='Your Current Project')
@@ -460,6 +439,7 @@ class EditorFrame(AddFrame):
         label = tk.Label(inner_frame, text='placeholder')
         inner_frame.pack()
         label.pack()
+        #frame interior
         self.create_buttons()
 
 
