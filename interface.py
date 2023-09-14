@@ -457,6 +457,10 @@ class EditorFrame(AddFrame):
             self.break_into_sections_box()
         else: 
             self.display_current_project()
+        
+        self.bind_activate_window_scrollbar_to_textbox_labels()
+
+
 
     def update_gpt4_flag(self):
         global button_exists
@@ -535,18 +539,22 @@ class EditorFrame(AddFrame):
         self.divide_frame.destroy()
         self.display_current_project()
         
+        
 
     def display_current_project(self):
         self.outer_project_frame = tk.Frame(self.frame)
         self.outer_project_frame.pack()
         title = tk.Label(self.outer_project_frame, text=f'Your Current Project: {PROJECT.title}')
         title.pack()
+        self.create_project_buttons(self.outer_project_frame)
         self.display = ProjectDisplayBox(self.outer_project_frame)
-        self.create_buttons_below_display()
+        self.create_project_buttons(self.outer_project_frame)
+        self.bind_all("<MouseWheel>", self.mouse_scroll)
 
 
-    def create_buttons_below_display(self):
-        button_frame = tk.Frame(self.frame)
+
+    def create_project_buttons(self,master):
+        button_frame = tk.Frame(master)
         button_frame.pack()
         self.run_all_button = tk.Button(button_frame, text = 'Run on all sections', command=self.run_all)
         self.download_responses_to_pdf_button = tk.Button(button_frame, text = 'Get PDF of responses', command=self.download_responses_to_pdf)
