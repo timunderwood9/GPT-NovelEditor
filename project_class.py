@@ -35,6 +35,7 @@ class Project:
         self.title = ""
         self.chapters = []
         self.project_text = ""
+        self.current_prompt = ""
         for key, value in kwargs.items():
             setattr(self, key, value)
         

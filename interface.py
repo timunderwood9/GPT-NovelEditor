@@ -5,6 +5,8 @@ from functools import partial
 import json
 from utility_functions import token_length
 from project_class import Project
+from openai import ChatCompletion
+import time
 
 def wrap_with_font(font, text, max_width = 600):
     words = text.split()
@@ -110,16 +112,14 @@ class LoadingPage:
         self.frame = tk.Frame(master)
         new_project_button = tk.Button(self.frame, bd=5, text="New Project", command = self.enter_project_title)
         new_project_button.pack()
-        load_button = tk.Button(self.frame, bd = 5, text="Load", command=self.load_main_interface)
+        load_button = tk.Button(self.frame, bd = 5, text="Load", command=self.load_dialogue)
         load_button.pack()
         exit_button = tk.Button(self.frame, bd = 5, text="Exit", command = self.exit_app)
         exit_button.pack()
         self.frame.pack()
 
-    def load_main_interface(self):
-
-        self.frame.pack_forget()
-        MainInterface(self.frame.master)
+    def load_dialogue(self):
+        pass
 
     #This function takes the entered text and creates the new project
     def new_project(title, window, entry_box, event):
@@ -171,16 +171,19 @@ class LoadingPage2:
     
     def load_input_page(self):
         destroy_widgets(root)
+        global main_interface
         main_interface = MainInterface(root)
         main_interface.notebook.select(main_interface.input_frame)
 
     def load_editing_page(self):
         destroy_widgets(root)
+        global main_interface
         main_interface = MainInterface(root)
         main_interface.notebook.select(main_interface.editing_frame)
 
     def load_blurb_page(self):
         destroy_widgets(root)
+        global main_interface
         main_interface = MainInterface(root)
         main_interface.notebook.select(main_interface.blurb_frame)
 
@@ -259,17 +262,24 @@ class CustomTextBox:
     def change_submitted_text(self, new_text):
         self.submitted_text = new_text
 
-class PromptDisplayBox:
-    def __init__(self, master, prompt_text = "You are a developmental editor with years of experience in helping writers create bestselling novels, you will rate the following scene and then provide concrete and specific advice on how to make it more emotionally powerful, compelling, and evocative.") -> None:
-        self.property = 'current_prompt'
-        self.default_prompt = prompt_text
-        self.current_prompt = prompt_text        
-
+class EditAndRestoreBox:
+    def __init__ (self, master, text, label_text = None, property = '', object = None):
         self.frame = tk.Frame(master)
         self.frame.pack()
-        self.label = tk.Label(self.frame, text = 'Your Current Prompt')
-        self.label.pack()
-        self.generate_prompt_display(self.current_prompt)
+        self.default_text = text
+        self.current_text = text
+        self.property = property
+        self.object = object
+        self.update_property(self.default_text)
+        
+        if label_text:
+            self.label = tk.Label(self.frame, text = label_text)
+            self.label.pack()
+
+        self.generate_prompt_display(self.current_text)
+
+    def update_property (self, new_value):
+        setattr(self.object, self.property, new_value)
 
     def generate_prompt_display(self, prompt_text):
         self.prompt_display = tk.Text(self.frame, height = 5, wrap = 'word')
@@ -281,35 +291,45 @@ class PromptDisplayBox:
         self.button_frame.pack()
 
         self.edit_button = tk.Button(self.button_frame, text='Edit', command=self.on_edit_press)
-        self.edit_button.pack(side = tk.LEFT)
-    
-    def on_edit_press(self):
-        self.prompt_display.configure(state='normal')
-        self.edit_button.pack_forget()
         self.save_button = tk.Button(self.button_frame, text = 'Save', command=self.on_save)
-        self.reset_button = tk.Button(self.button_frame, text = 'Reset Prompt', command=self.on_reset)
-        self.save_button.pack(side=tk.LEFT)
+        self.reset_button = tk.Button(self.button_frame, text = 'Reset', command=self.on_reset)
+        self.edit_button.pack(side = tk.LEFT)
+        
+
+    def on_edit_press(self):
+        self.clear_buttons()
+        self.prompt_display.configure(state='normal')
+        self.save_button.pack(side=tk.LEFT)    
         self.reset_button.pack(side=tk.LEFT)
 
     def on_save(self):
+        print('run save')
+        self.clear_buttons()
         self.prompt_display.configure(state='disabled')
-        self.current_prompt = self.prompt_display.get('1.0', 'end-1c')
+        self.current_text = self.prompt_display.get('1.0', 'end-1c')
+        self.update_property(self.current_text)
 
-        self.save_button.pack_forget()
-        self.reset_button.pack_forget()
         self.edit_button.pack(side=tk.LEFT)
-        if not self.current_prompt == self.default_prompt:
-            self.reset_button.pack()
+        if not (self.current_text == self.default_text):
+            self.reset_button.pack(side=tk.LEFT)
 
     def on_reset(self):
-        self.edit_button.pack_forget()
-        self.reset_button.pack_forget()
-        self.save_button.pack(side=tk.LEFT)
-        self.reset_button.pack(side=tk.LEFT)
+        self.clear_buttons()
+        self.update_property(self.default_text)
+        self.edit_button.pack()
         self.prompt_display.configure(state='normal')
         self.prompt_display.delete('1.0', 'end')
-        self.prompt_display.insert('1.0', self.default_prompt)
+        self.prompt_display.insert('1.0', self.default_text)
+        self.prompt_display.configure(state='disabled')
 
+    def clear_buttons(self):
+        self.edit_button.pack_forget()
+        self.save_button.pack_forget()
+        self.reset_button.pack_forget()
+
+    def get(self):
+        return self.current_text
+ 
 class AddFrame(ttk.Frame):
     def __init__(self, master):
         super().__init__(master)
@@ -333,6 +353,9 @@ class AddFrame(ttk.Frame):
         self.style = ttk.Style()
         self.style.configure("Title.TLabel", font=("Helvetica", 24, "bold"), foreground="black")
         
+        self.check_attribute_button = tk.Button(text='current_prompt', command= lambda : print(PROJECT.current_prompt))
+        self.check_attribute_button.pack()
+
     def mouse_scroll(self, event):
         self.canvas.yview_scroll(-1*(event.delta//120), "units")
 
@@ -382,40 +405,78 @@ class ProjectDisplayLine:
     def __init__(self, parent, section):
         self.section = section
         self.parent = parent
-        self.label = tk.Label(parent, text=section.name, padx=10, borderwidth=1, relief='solid')
-        self.view_text_button = tk.Button(parent, text='View Text', command=self.view_text, 
+        self.text_frame = None
+        self.line_frame = tk.Frame(self.parent, )
+        self.label = tk.Label(self.line_frame, width=70, text=section.name, padx=10, borderwidth=1, relief='solid')
+        self.view_text_button = tk.Button(self.line_frame, text='View Text', command=self.view_text, 
                                 bg="#DDDDDD", relief="groove")
-        self.generate_output_button = tk.Button(parent, text='Generate', command=self.generate_output, 
+        self.generate_output_button = tk.Button(self.line_frame, text='Generate', width=10, command=self.generate_output, 
                                 bg="#DDDDDD", relief="groove")
-        self.view_output_button = tk.Button(parent, text='View Outputs', command=self.view_output, 
+        self.view_output_button = tk.Button(self.line_frame, text='View Outputs', width = 10, command=self.view_output, 
                                 bg="#DDDDDD", relief="groove")
-        self.no_outputs_button = tk.Button(parent, text='No Outputs', command=None, 
+        self.no_outputs_button = tk.Button(self.line_frame, text='No Outputs', width=10, command=None, 
                                    bg="#AAAAAA", relief="sunken")
+        self.processing_button = tk.Button(self.line_frame, text="Processing", width=10, fg='yellow', bg='green', relief="solid")
         
-        
-        parent.grid_columnconfigure(0, weight=4)  # Label column
-        parent.grid_columnconfigure(1, weight=1)  # view_text column
-        parent.grid_columnconfigure(2, weight=1)  # generate column
-        parent.grid_columnconfigure(3, weight=1)  # view_output column
+        self.label.grid(row=0, column=0, sticky='nsew')
+        self.view_text_button.grid(row=0, column=1, sticky='nsew')
+        self.generate_output_button.grid(row=0, column=2, sticky='nsew')
+        if self.section.llm_outputs:
+            self.view_output_button.grid(row=0, column=3, sticky= 'nsew')
+        else: self.no_outputs_button.grid(row=0, column=3, sticky='nsew')
+
+        #have the scrollbar for the notebook tab activate when the labels are clicked
+        self.label.bind('<Button-1>', main_interface.editing_frame.activate_window_scrollbar)
 
     def place_in_grid(self, row):
-        self.label.grid(row=row, column=0, sticky='nsew')
-        self.view_text_button.grid(row=row, column=1, sticky='nsew')
-        self.generate_output_button.grid(row=row, column=2, sticky='nsew')
-        if self.section.llm_outputs:
-            self.view_output_button.grid(row=row, column=3, sticky= 'nsew')
-        else: self.no_outputs_button.grid(row=row, column=3, sticky='nsew')
-
+        self.row = row
+        self.line_frame.grid(row=row, columnspan=4, sticky='nsew')
 
     def view_text(self):
-        pass
+        if self.text_frame:
+            self.text_frame.destroy()
+            self.text_frame = None
+        self.text_frame = tk.Frame(self.line_frame)
+        self.text_frame.grid(row=1, columnspan=4, sticky='nsew')
+        self.textbox = tk.Text(self.text_frame, wrap='word', width=60, height=10)
+        self.textbox.pack(expand=True, fill='both')
+        self.textbox.insert(tk.END, self.section.section_text) 
+        self.textbox.bind("<FocusIn>", deactivate_window_scrollbar)
+        
+        self.close_button = tk.Button(self.text_frame, text="Close", command=self.close_text_frame)
+        self.close_button.pack(side="right")
 
+    def generate_output(self):
+        self.processing_button.grid(row=0, column=2, sticky='nsew')
+        #self.get_GPT_response()
+        self.count=0
+
+    def update_loop(self):
+        if self.count < 2:
+            self.count += 1
+        self.generate_output_button.grid(row=0, column=2, sticky='nsew')
+        
+
+    def get_GPT_response(self):
+        if PROJECT.gpt4_flag == 1:
+            model = 'gpt-4'
+        else: 
+            model = 'gpt-3.5-turbo'
+        
+        output = ChatCompletion.create (
+            model = model,
+            messages = [{"role" : "system", "content" : PROJECT.current_prompt},
+                      {"role" : "user", "content" : self.section.section_text}
+                      ]
+        )
+        self.section.llm_results += PROJECT.current_prompt + '\n' + output + '\n'
+    
     def view_output(self):
         pass
 
-    def generate_output(self):
-        pass
-
+    def close_text_frame(self):
+        self.text_frame.destroy()
+        self.text_frame=None
 
 class ProjectDisplayBox:
     def __init__(self, master):
@@ -447,11 +508,15 @@ class EditorFrame(AddFrame):
         super().__init__(master)
         global PROJECT
         self.divided = PROJECT.divided
-            
+        PROJECT.current_prompt = ""
+
         if not api_key:
             self.api_entry_box = CustomTextBox(self.frame, 'api_key', 'Please enter your OpenAI api key here', widget_type='entrybox', submitted_text='We will use {} as the API key')
 
-        self.prompt = PromptDisplayBox(self.frame)
+        prompt_text = "You are a developmental editor with years of experience in helping writers create bestselling novels, you will rate the following scene and then provide concrete and specific advice on how to make it more emotionally powerful, compelling, and evocative."
+        label_text='Your Current Prompt'
+        
+        self.prompt = EditAndRestoreBox(self.frame, prompt_text, label_text=label_text, property = "current_prompt", object=PROJECT)
         self.create_gpt4_toggle()
         if not self.divided: 
             self.break_into_sections_box()
@@ -463,6 +528,8 @@ class EditorFrame(AddFrame):
 
 
     def update_gpt4_flag(self):
+        #why is it global button_exists? Who uses that, and can we get this different?
+        #Sure, use globals for things like PROJECT and main_interface, but this?
         global button_exists
         PROJECT.gpt4_flag = 0
         PROJECT.gpt4_flag = self.gpt4_flag.get()
@@ -640,7 +707,7 @@ class MainInterface:
         self.notebook.add(self.blurb_frame, text='Create Blurbs')
 
 def start_program():
-    global PROJECT, root, loading_page, loading_page2, api_key, WARNING_FONT
+    global PROJECT, root, loading_page, loading_page2, api_key, WARNING_FONT, main_interface
     PROJECT = None
     api_key = None
     root = tk.Tk()
