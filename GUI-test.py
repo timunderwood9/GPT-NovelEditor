@@ -19,5 +19,4 @@ with open ('test_novel.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
 interface.PROJECT.project_text = text
-interface.loading_page2.load_input_page()
-interface.go_to_editing()
+interface.loading_page2.load_editing_page()

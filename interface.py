@@ -5,8 +5,30 @@ from functools import partial
 import json
 from utility_functions import token_length
 from project_class import Project
-from openai import ChatCompletion
-import time
+import openai
+import asyncio
+from tkinter import messagebox
+
+#testing function
+def _go_to_current_position(event):
+
+    PROJECT.title = "The Missing Prince"
+    PROJECT.divided = False
+    with open ('test_novel.txt', 'r', encoding='utf-8') as f:
+        text = f.read()
+
+    PROJECT.project_text = text
+
+def show_error(error_message):
+    error_window = tk.Tk()
+    error_window.withdraw()
+    messagebox.showerror("Error", error_message)
+    error_window.destroy()  # Destroy the main window
+
+def asyncio_loop_cycle(loop):
+    loop.stop()
+    loop.run_forever()
+    root.after(100, asyncio_loop_cycle, loop)
 
 def wrap_with_font(font, text, max_width = 600):
     words = text.split()
@@ -22,11 +44,6 @@ def wrap_with_font(font, text, max_width = 600):
             line=word
     wrapped_lines.append(line)
     return "\n".join(wrapped_lines)
-
-#if you add or change number of tabs, this will break
-def go_to_editing():
-    root.notebook.select(1)
-
 
 def print_root_children():
     print(root.winfo_children())
@@ -189,12 +206,13 @@ class LoadingPage2:
 
 #currently defined to only take 'textbox' and 'entrybox' as types.
 class CustomTextBox:
-    def __init__(self, master, property_name, label_text, widget_type = 'textbox', submitted_text = "Your entry has been saved:\n{}", default_text=None):
+    def __init__(self, master, property = "", object = None, label = "", widget_type = 'textbox', submitted_text = "Your entry has been saved:\n{}", default_text=None):
         self.frame = tk.Frame(master, borderwidth=5, relief=tk.RIDGE)
         self.frame.pack()
+        self.object = object
 
-        self.label_text = label_text
-        self.property_name = property_name
+        self.label_text = label
+        self.property_name = property
         self.submitted_text = submitted_text
         self.widget_type = widget_type
         self.submit_button_text = "Save"
@@ -211,8 +229,8 @@ class CustomTextBox:
         elif self.widget_type == 'entrybox':
             new_property_value = self.entrybox.get()
 
-        global PROJECT
-        setattr(PROJECT, self.property_name, new_property_value)
+        setattr(self.object, self.property_name, new_property_value)
+        print(getattr(self.object, self.property_name))
 
         destroy_widgets(self.frame)
         #Limiting the length of the printed portion of the entry and adding a '...' for formatting reasons
@@ -436,6 +454,7 @@ class ProjectDisplayLine:
         if self.text_frame:
             self.text_frame.destroy()
             self.text_frame = None
+            return
         self.text_frame = tk.Frame(self.line_frame)
         self.text_frame.grid(row=1, columnspan=4, sticky='nsew')
         self.textbox = tk.Text(self.text_frame, wrap='word', width=60, height=10)
@@ -448,28 +467,39 @@ class ProjectDisplayLine:
 
     def generate_output(self):
         self.processing_button.grid(row=0, column=2, sticky='nsew')
-        #self.get_GPT_response()
-        self.count=0
+        #Has get_GPT_response run in the async loop so the rest of the app can keep running while waiting
 
-    def update_loop(self):
-        if self.count < 2:
-            self.count += 1
-        self.generate_output_button.grid(row=0, column=2, sticky='nsew')
+        async_loop.run_until_complete(self.get_GPT_response())
         
+    async def get_GPT_response(self):
+        print ('about to start waiting')
 
-    def get_GPT_response(self):
         if PROJECT.gpt4_flag == 1:
             model = 'gpt-4'
         else: 
             model = 'gpt-3.5-turbo'
-        
-        output = ChatCompletion.create (
+
+        try:
+            output = await openai.ChatCompletion.create (
             model = model,
             messages = [{"role" : "system", "content" : PROJECT.current_prompt},
                       {"role" : "user", "content" : self.section.section_text}
                       ]
         )
+        except openai.error.AuthenticationError as e:
+            print('exception')
+            show_error('You probably entered an invalid API key')
+            self.processing_button.grid_forget()
+            self.generate_output_button.grid(row=0, column=2, sticky='nsew')
+        
+        except Exception as e:
+            show_error(str(e))
+
+
         self.section.llm_results += PROJECT.current_prompt + '\n' + output + '\n'
+        self.processing_button.after(0, self.processing_button.grid_forget)
+        self.generate_output_button.after(0, lambda : self.generate_output_button.grid(row=0, column=2))
+        self.view_output_button.after(0, lambda : self.view_output_button.grid(row=0, column=3))
     
     def view_output(self):
         pass
@@ -511,19 +541,20 @@ class EditorFrame(AddFrame):
         PROJECT.current_prompt = ""
 
         if not api_key:
-            self.api_entry_box = CustomTextBox(self.frame, 'api_key', 'Please enter your OpenAI api key here', widget_type='entrybox', submitted_text='We will use {} as the API key')
+            self.api_entry_box = CustomTextBox(self.frame, 'api_key', label='Please enter your OpenAI api key here', widget_type='entrybox', submitted_text='We will use {} as the API key')
 
         prompt_text = "You are a developmental editor with years of experience in helping writers create bestselling novels, you will rate the following scene and then provide concrete and specific advice on how to make it more emotionally powerful, compelling, and evocative."
         label_text='Your Current Prompt'
         
         self.prompt = EditAndRestoreBox(self.frame, prompt_text, label_text=label_text, property = "current_prompt", object=PROJECT)
         self.create_gpt4_toggle()
-        if not self.divided: 
+        if not self.divided:
             self.break_into_sections_box()
         else: 
             self.display_current_project()
         
         self.bind_activate_window_scrollbar_to_textbox_labels()
+
 
 
 
@@ -564,16 +595,21 @@ class EditorFrame(AddFrame):
 
     def break_into_sections_box(self):
         # Check if the divide frame already exists
+        print('starts break into sections box')
         if not hasattr(self, 'divide_frame'):
             self.divide_frame = tk.Frame(self.frame)
             self.divide_frame.pack()
 
         # Create or update label
         if hasattr(self, 'label'):
+            print(PROJECT.project_text)
             if PROJECT.project_text:
+                print('if project statement fires')
                 self.label.config(text=self.label_word_wrapper("..."))
             else:
+                print('if project statement does not fire')
                 self.label.config(fg='red', text=self.label_word_wrapper("You need to enter text..."))
+            print(PROJECT.project_text)
         else:
             if PROJECT.project_text:
                 self.label = tk.Label(self.divide_frame, text=self.label_word_wrapper("We still need to break this project into sections small enough to be sent to GPT. You can break the text up at each capitalized 'Chapter'. Otherwise everything will be divided into equally sized sections of up to about 1500 words (2000 tokens) with an overlap of about forty words. This is how chapters will be divided also."))
@@ -599,7 +635,11 @@ class EditorFrame(AddFrame):
             self.submit_button.pack(side=tk.LEFT)
 
 
-    def submit_break_into_sections(self):
+    def submit_break_into_sections(self, flag = None):
+        #Something stuck in for a test, should be removed later
+        if isinstance(flag, bool):
+            PROJECT.create_sections_and_chapters_from_text(flag)
+            return
         PROJECT.create_sections_and_chapters_from_text(self.chapter_divider_flag.get())
         PROJECT.divided = True
 
@@ -659,7 +699,7 @@ class InputFrame(AddFrame):
         self.create_title(text = f'Enter the details of {self.title}')
 
         label_texts = self.fetch_label_texts()
-        self.project_text = CustomTextBox(self.frame, 'project_text', label_texts['project_text'])
+        self.project_text = CustomTextBox(self.frame, property = 'project_text', object = PROJECT, label = label_texts['project_text'])
 
         #Section headings that will be used for later features but I've dropped from my
         #minimum viable product version
@@ -687,7 +727,7 @@ class InputFrame(AddFrame):
     def go_to_editing_page_button(self):
         button_frame = tk.Frame(self.frame)
         button_frame.pack()
-        to_editing_page = tk.Button(button_frame, text='Go to Editing Page', command=go_to_editing)
+        to_editing_page = tk.Button(button_frame, text='Go to Editing Page', command=loading_page2.load_editing_page)
         to_editing_page.pack()
 
 
@@ -707,14 +747,19 @@ class MainInterface:
         self.notebook.add(self.blurb_frame, text='Create Blurbs')
 
 def start_program():
-    global PROJECT, root, loading_page, loading_page2, api_key, WARNING_FONT, main_interface
-    PROJECT = None
+    global PROJECT, root, async_loop, loading_page, loading_page2, api_key, WARNING_FONT, main_interface
+    PROJECT = Project
     api_key = None
     root = tk.Tk()
     root.title('GPT Writing Tools')
     loading_page = LoadingPage(root)
     root.geometry("800x600+100+50")
     root.bind_all('<Control-q>', quit_program)
+    root.bind_all('<Control-m>', _go_to_current_position)
+
+    
+    async_loop = asyncio.get_event_loop()
+    root.after(100, asyncio_loop_cycle, async_loop)
     root.mainloop()
 
 if __name__ == '__main__':
