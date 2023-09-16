@@ -281,7 +281,7 @@ class CustomTextBox:
         self.submitted_text = new_text
 
 class EditAndRestoreBox:
-    def __init__ (self, master, text, label_text = None, property = '', object = None):
+    def __init__ (self, master, text, label_text = None, property = '', object = None, width = None, height = 5):
         self.frame = tk.Frame(master)
         self.frame.pack()
         self.default_text = text
@@ -289,6 +289,8 @@ class EditAndRestoreBox:
         self.property = property
         self.object = object
         self.update_property(self.default_text)
+        self.width = width
+        self.height = height
         
         if label_text:
             self.label = tk.Label(self.frame, text = label_text)
@@ -300,7 +302,10 @@ class EditAndRestoreBox:
         setattr(self.object, self.property, new_value)
 
     def generate_prompt_display(self, prompt_text):
-        self.prompt_display = tk.Text(self.frame, height = 5, wrap = 'word')
+        if self.width:
+            self.prompt_display = tk.Text(self.frame, height = self.height, width=self.width, wrap = 'word')
+        else:
+            self.prompt_display = tk.Text(self.frame, height = self.height, wrap = 'word')
         self.prompt_display.pack()
         self.prompt_display.insert('1.0', prompt_text)
         self.prompt_display.configure(state='disabled')
@@ -496,13 +501,26 @@ class ProjectDisplayLine:
             show_error(str(e))
 
 
-        self.section.llm_results += PROJECT.current_prompt + '\n' + output + '\n'
+        self.section.llm_outputs += PROJECT.current_prompt + '\n' + output + '\n'
         self.processing_button.after(0, self.processing_button.grid_forget)
         self.generate_output_button.after(0, lambda : self.generate_output_button.grid(row=0, column=2))
+        self.no_outputs_button.destroy
         self.view_output_button.after(0, lambda : self.view_output_button.grid(row=0, column=3))
     
     def view_output(self):
-        pass
+        if self.text_frame:
+            self.text_frame.destroy()
+            self.text_frame = None
+            return
+        self.text_frame = tk.Frame(self.line_frame)
+        self.text_frame.grid(row=1, columnspan=4, sticky='nsew')
+        self.textbox = tk.Text(self.text_frame, wrap='word', width=60, height=10)
+        self.textbox.pack(expand=True, fill='both')
+        self.textbox.insert(tk.END, self.section.llm_results) 
+        self.textbox.bind("<FocusIn>", deactivate_window_scrollbar)
+        
+        self.close_button = tk.Button(self.text_frame, text="Close", command=self.close_text_frame)
+        self.close_button.pack(side="right")
 
     def close_text_frame(self):
         self.text_frame.destroy()
@@ -540,8 +558,14 @@ class EditorFrame(AddFrame):
         self.divided = PROJECT.divided
         PROJECT.current_prompt = ""
 
-        if not api_key:
-            self.api_entry_box = CustomTextBox(self.frame, 'api_key', label='Please enter your OpenAI api key here', widget_type='entrybox', submitted_text='We will use {} as the API key')
+        # if not api_key:
+        #     self.api_entry_box = CustomTextBox(self.frame, 'api_key', label='Please enter your OpenAI api key here', widget_type='entrybox', submitted_text='We will use {} as the API key')
+        if PROJECT.api_key:
+            openai.api_key = PROJECT.api_key
+            self.api_entry_box = EditAndRestoreBox(self.frame, PROJECT.api_key, height=1, width=20, label_text="The OpenAI API key is:", property='api_key', object=PROJECT)
+        else:
+            self.api_entry_box = EditAndRestoreBox(self.frame, "", height=1, width=20, label_text="Enter your OpenAI API key:", property='api_key', object=PROJECT)
+
 
         prompt_text = "You are a developmental editor with years of experience in helping writers create bestselling novels, you will rate the following scene and then provide concrete and specific advice on how to make it more emotionally powerful, compelling, and evocative."
         label_text='Your Current Prompt'

@@ -33,6 +33,7 @@ class Chapter:
 
 class Project:
     def __init__(self, **kwargs):
+        self.api_key = ""
         self.title = ""
         self.chapters = []
         self.project_text = ""
@@ -131,43 +132,39 @@ class Project:
         
         self.split_all_chapters()
         
-    def send_section_to_GPT(self, section):
-        text = section.section_text
-        model = 'gpt-3.5-turbo'
-        if self.gpt4_flag:
-            model = 'gpt-4'
-        try:
-            section.llm_results = openai.ChatCompletion.create(
-                model = model,
-                messages = [
-                    {"role" : "system", "content" : self.current_prompt},
-                    {"role" : "system", "content" : text}
-                ]
-            )
+    # def send_section_to_GPT(self, section):
+    #     text = section.section_text
+    #     model = 'gpt-3.5-turbo'
+    #     if self.gpt4_flag:
+    #         model = 'gpt-4'
+    #     try:
+    #         section.llm_results = openai.ChatCompletion.create(
+    #             model = model,
+    #             messages = [
+    #                 {"role" : "system", "content" : self.current_prompt},
+    #                 {"role" : "system", "content" : text}
+    #             ]
+    #         )
         
-        except openai.error.AuthenticationError as e:
-            print ('exception used')
-            temp_root = tk.Tk()
-            temp_root.withdraw()  # Hide the temporary Tk root window
-            tk.messagebox.showerror("Authentication Error", "You probably didn't enter a currently valid API key, double check your API key.")
-            temp_root.destroy()  # Destroy the temporary Tk root window
+    #     except openai.error.AuthenticationError as e:
+    #         print ('exception used')
+    #         temp_root = tk.Tk()
+    #         temp_root.withdraw()  # Hide the temporary Tk root window
+    #         tk.messagebox.showerror("Authentication Error", "You probably didn't enter a currently valid API key, double check your API key.")
+    #         temp_root.destroy()  # Destroy the temporary Tk root window
 
-        except Exception as e:
-            self.show_error(str(e))
+    #     except Exception as e:
+    #         self.show_error(str(e))
 
-        print(model)
+    #     print(model)
 
-    def send_all_sections_to_GPT(self):
-        for chapter in self.chapters:
-            for section in chapter.sections:
-                self.send_section_to_GPT(section)
-                self.send_message_to_GUI(section)
+    # def send_all_sections_to_GPT(self):
+    #     for chapter in self.chapters:
+    #         for section in chapter.sections:
+    #             self.send_section_to_GPT(section)
+    #             self.send_message_to_GUI(section)
 
-    def show_error(error_message):
-        error_window = tk.Tk()
-        error_window.withdraw()
-        tk.messagebox.showerror("Error", error_message)
-        error_window.destroy()  # Destroy the main window
+
 
     #right now going to do a pdf instead, but I think this option should be there eventually
     def create_txt_for_download(self):
