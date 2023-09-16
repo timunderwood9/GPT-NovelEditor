@@ -2,6 +2,7 @@
 *practice*
 .json
 .env
+python.env
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
