@@ -36,7 +36,7 @@ class TestSplitTextIntoChunks(unittest.TestCase):
         for chunk in chunks:
             self.assertTrue(len(project.encode_text(chunk)) <= 2000)
             
-        # Verify overlap
+        # Verify overlap - using tokens not the decoded text
         chunks = [self.encoding.encode(chunk) for chunk in chunks]
         for i in range(len(chunks) - 1):
             self.assertEqual(chunks[i][-40:], chunks[i + 1][:40])

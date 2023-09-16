@@ -11,6 +11,7 @@ from tkinter import messagebox
 
 #testing function
 def _go_to_current_position(event):
+    
 
     PROJECT.title = "The Missing Prince"
     PROJECT.divided = False
