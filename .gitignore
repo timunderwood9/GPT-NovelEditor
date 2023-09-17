@@ -3,6 +3,8 @@
 *.json
 .env
 *python.env
+test_responses.txt
+test_text2.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
