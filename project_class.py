@@ -13,8 +13,9 @@ class Section:
 
     def to_dict(self):
         return {
-            'scene_text': self.section_text,
-            'llm_results': self.llm_results
+            'name' : self.name,
+            'section_text': self.section_text,
+            'llm_outputs': self.llm_outputs
         }
 
 class Chapter:
@@ -28,7 +29,9 @@ class Chapter:
 
     def to_dict(self):
         return {
-            'scenes': [section.to_dict() for section in self.sections]
+            'name' : self.name,
+            'text' : self.text,
+            'sections': [section.to_dict() for section in self.sections]
         }
 
 class Project:
@@ -39,46 +42,64 @@ class Project:
         self.project_text = ""
         self.current_prompt = ""
         self.gpt4_flag = 0
+        self.divided = False
         for key, value in kwargs.items():
             setattr(self, key, value)
         
     def add_chapter(self, chapter):
         self.chapters.append(chapter)
 
-    def chapters_to_dict(self):
+    def get_attributes_as_dict(self):
         return {
+            'api_key' : self.api_key,
+            'title' : self.title,
+            'project_text' : self.project_text,
+            'current_prompt' : self.current_prompt,
+            'gpt4-flag' : self.gpt4_flag,
+            'current_prompt' : self.current_prompt,
+            'divided' : self.divided,
             'chapters': [chapter.to_dict() for chapter in self.chapters]
         }
-    
-    def get_attributes_as_dict(self):
-        return vars(self)
 
-    def save(self, to_default_path = True):
-        if to_default_path == False:
-            filename = self.open_save_dialogue()
-        #should I be using a join function of some sort?
-        #Check again how to get the right path to the save file in the save folder
-        #else: filename = self.title + '.json'
-        with open(filename, 'w') as file:
+    def save(self, file_path):
+        with open(file_path, 'w') as file:
             json.dump(self.get_attributes_as_dict(), file)
     
-    @staticmethod
-    def open_save_dialogue():
-        pass
-
     @staticmethod
     def load(filename):
         with open(filename, 'r') as file:
             data = json.load(file)
-            return Project(**data)
+            project = Project()
+            project.api_key = data['api_key']
+            project.title = data['title']
+            project.project_text = data['project_text']
+            project.current_prompt = data['current_prompt']
+            project.gpt4_flag = data['gpt4-flag']
+            project.divided = data['divided']
+            project.chapters = Project.chapters_from_dict(data['chapters'])
+        
+        print (project.api_key)
+        print (project.chapters)
+        return project
 
-            
-            # for chapter_data in data['chapters']:
-            #     chapter = Chapter()
-            #     for scene_data in chapter_data['scenes']:
-            #         scene = Scene(scene_data['scene_text'], scene_data['llm_results'])
-            #         chapter.add_scene(scene)
-            #     novel.add_chapter(chapter)
+    @staticmethod
+    def chapters_from_dict(chapter_list):
+        chapters = []
+        for chapter in chapter_list:
+            name = chapter['name']
+            text = chapter['text']
+            new_chapter = Chapter(name, text)
+            section_list = []
+            for section in chapter['sections']:
+                name = section['name']
+                section_text = section['section_text']
+                llm_outputs = section['llm_outputs']
+                new_section = Section(section_text, name, llm_outputs=llm_outputs)
+                section_list.append(new_section)
+            new_chapter.sections = section_list
+            chapters.append(new_chapter)
+        return chapters
+
     
     def split_text_into_chunks(self, text, max_chunk_size=2000, overlap=40):
         chunks = []
@@ -131,44 +152,6 @@ class Project:
                 start_index = end_index
         
         self.split_all_chapters()
-        
-    # def send_section_to_GPT(self, section):
-    #     text = section.section_text
-    #     model = 'gpt-3.5-turbo'
-    #     if self.gpt4_flag:
-    #         model = 'gpt-4'
-    #     try:
-    #         section.llm_results = openai.ChatCompletion.create(
-    #             model = model,
-    #             messages = [
-    #                 {"role" : "system", "content" : self.current_prompt},
-    #                 {"role" : "system", "content" : text}
-    #             ]
-    #         )
-        
-    #     except openai.error.AuthenticationError as e:
-    #         print ('exception used')
-    #         temp_root = tk.Tk()
-    #         temp_root.withdraw()  # Hide the temporary Tk root window
-    #         tk.messagebox.showerror("Authentication Error", "You probably didn't enter a currently valid API key, double check your API key.")
-    #         temp_root.destroy()  # Destroy the temporary Tk root window
-
-    #     except Exception as e:
-    #         self.show_error(str(e))
-
-    #     print(model)
-
-    # def send_all_sections_to_GPT(self):
-    #     for chapter in self.chapters:
-    #         for section in chapter.sections:
-    #             self.send_section_to_GPT(section)
-    #             self.send_message_to_GUI(section)
-
-
-
-    #right now going to do a pdf instead, but I think this option should be there eventually
-    def create_txt_for_download(self):
-        pass
 
     def create_pdf_of_gpt_outputs(self):
         pdf_text = []

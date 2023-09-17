@@ -1,18 +1,43 @@
 import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkFont
+from tkinter import messagebox
+from tkinter import filedialog
 from functools import partial
 import json
 from utility_functions import token_length
 from project_class import Project
 import openai
 import asyncio
-from tkinter import messagebox
 from dotenv import load_dotenv
 import os
 import threading
 
 #testing function
+def load_project():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    options = {
+        'defaultextension': '.json',
+        'filetypes': [('JSON files', '.json')],
+        'initialdir': script_dir,  # Set initial directory to "saves" subdirectory
+        'title': 'Open JSON File',
+    }
+
+    filename = filedialog.askopenfilename(**options)
+    
+    if filename:
+        global PROJECT, main_interface, loading_page2
+        PROJECT = Project.load(filename)
+        print(PROJECT.api_key)
+        print(PROJECT.chapters)
+        destroy_widgets(root)
+        loading_page2 = LoadingPage2(root)
+        destroy_widgets(root)
+        main_interface = MainInterface(root)
+        main_interface.editing_frame.build_display_box()
+        main_interface.notebook.select(main_interface.editing_frame)
+
 def _go_to_current_position(event):
     load_dotenv()
     load_dotenv(r"C:\Users\Dell Latitude 7400\OneDrive\Documents\GitHub\timunderwood-private\python.env")
@@ -24,7 +49,12 @@ def _go_to_current_position(event):
     with open ('test_novel.txt', 'r', encoding='utf-8') as f:
         text = f.read()
 
+#    PROJECT.project_text = text[1000:20000]
     PROJECT.project_text = text
+
+def clear_rate_limit():
+    global rate_limit_hit
+    rate_limit_hit = False
 
 def show_error(error_message):
     error_window = tk.Tk()
@@ -136,14 +166,11 @@ class LoadingPage:
         self.frame = tk.Frame(master)
         new_project_button = tk.Button(self.frame, bd=5, text="New Project", command = self.enter_project_title)
         new_project_button.pack()
-        load_button = tk.Button(self.frame, bd = 5, text="Load", command=self.load_dialogue)
+        load_button = tk.Button(self.frame, bd = 5, text="Load", command=load_project)
         load_button.pack()
         exit_button = tk.Button(self.frame, bd = 5, text="Exit", command = self.exit_app)
         exit_button.pack()
         self.frame.pack()
-
-    def load_dialogue(self):
-        pass
 
     #This function takes the entered text and creates the new project
     def new_project(title, window, entry_box, event):
@@ -181,12 +208,10 @@ class LoadingPage2:
         
         input_details_button = tk.Button(self.frame, text='Input Novel Details', command=self.load_input_page)
         editing_button = tk.Button(self.frame, text='Use editing and summarization prompts', command=self.load_editing_page)
-        blurb_writing_button = tk.Button(self.frame, text='Use Blurb Writing Prompts', command=self.load_blurb_page)
         
         title_label.pack()
         input_details_button.pack()
         editing_button.pack()
-        blurb_writing_button.pack()
         self.frame.pack()
 
     def create_title_label(self, text):
@@ -204,12 +229,6 @@ class LoadingPage2:
         global main_interface
         main_interface = MainInterface(root)
         main_interface.notebook.select(main_interface.editing_frame)
-
-    def load_blurb_page(self):
-        destroy_widgets(root)
-        global main_interface
-        main_interface = MainInterface(root)
-        main_interface.notebook.select(main_interface.blurb_frame)
 
 #currently defined to only take 'textbox' and 'entrybox' as types.
 class CustomTextBox:
@@ -307,8 +326,10 @@ class EditAndRestoreBox:
 
     def update_property (self, new_value):
         setattr(self.object, self.property, new_value)
-        print( PROJECT.api_key)
-
+        #code to set in case it is api_key, I feel like better practice wouldn't have this update here, but I'm not sure how to switch it without lots of extra code otherwise
+        if self.property == 'api_key':
+            openai.api_key = PROJECT.api_key
+    
     def generate_prompt_display(self, prompt_text):
         if self.width:
             self.prompt_display = tk.Text(self.frame, height = self.height, width=self.width, wrap = 'word')
@@ -384,8 +405,9 @@ class AddFrame(ttk.Frame):
         self.style = ttk.Style()
         self.style.configure("Title.TLabel", font=("Helvetica", 24, "bold"), foreground="black")
         
-        self.check_attribute_button = tk.Button(text='current_prompt', command= lambda : print(PROJECT.current_prompt))
-        self.check_attribute_button.pack()
+        #Removed testing function
+        # self.check_attribute_button = tk.Button(text='current_prompt', command= lambda : print(PROJECT.current_prompt))
+        # self.check_attribute_button.pack()
 
     def mouse_scroll(self, event):
         self.canvas.yview_scroll(-1*(event.delta//120), "units")
@@ -437,7 +459,7 @@ class ProjectDisplayLine:
         self.section = section
         self.parent = parent
         self.text_frame = None
-        self.line_frame = tk.Frame(self.parent, )
+        self.line_frame = tk.Frame(self.parent)
         self.label = tk.Label(self.line_frame, width=70, text=section.name, padx=10, borderwidth=1, relief='solid')
         self.view_text_button = tk.Button(self.line_frame, text='View Text', command=self.view_text, 
                                 bg="#DDDDDD", relief="groove")
@@ -504,9 +526,7 @@ class ProjectDisplayLine:
                       ]
         )
             reply = output['choices'][0]['message']['content']
-            print(reply)
-            self.section.llm_outputs += f'Prompt: {PROJECT.current_prompt} \n Output: {reply} \n [End of Output]'
-
+            self.section.llm_outputs += f'Prompt: {PROJECT.current_prompt} \n Output: {reply} \n [End of Output] \n'
 
         except openai.error.AuthenticationError as e:
             print('exception')
@@ -514,6 +534,12 @@ class ProjectDisplayLine:
             self.processing_button.grid_forget()
             self.generate_output_button.grid(row=0, column=2, sticky='nsew')
         
+        except openai.error.RateLimitError as e:
+            global rate_limit_hit
+            rate_limit_hit = True
+            root.after(60000, clear_rate_limit)
+            return
+            
         except Exception as e:
             show_error(str(e))
 
@@ -547,6 +573,7 @@ class ProjectDisplayBox:
     def __init__(self, master):
         self.frame = tk.Frame(master)
         self.frame.pack()
+
         self.lines = []
         i = 0
         for chapter in PROJECT.chapters:
@@ -573,6 +600,7 @@ class EditorFrame(AddFrame):
         super().__init__(master)
         global PROJECT
         self.divided = PROJECT.divided
+        self.rate_limit_hit = False
         PROJECT.current_prompt = ""
 
         # if not api_key:
@@ -582,22 +610,28 @@ class EditorFrame(AddFrame):
             self.api_entry_box = EditAndRestoreBox(self.frame, PROJECT.api_key, height=1, width=40, label_text="The OpenAI API key is:", property='api_key', object=PROJECT)
         else:
             self.api_entry_box = EditAndRestoreBox(self.frame, "", height=1, width=40, label_text="Enter your OpenAI API key:", property='api_key', object=PROJECT)
-
+        
 
         prompt_text = "You are a developmental editor with years of experience in helping writers create bestselling novels, you will rate the following scene and then provide concrete and specific advice on how to make it more emotionally powerful, compelling, and evocative."
         label_text='Your Current Prompt'
         
         self.prompt = EditAndRestoreBox(self.frame, prompt_text, label_text=label_text, property = "current_prompt", object=PROJECT)
         self.create_gpt4_toggle()
-        if not self.divided:
-            self.break_into_sections_box()
-        else: 
-            self.display_current_project()
         
         self.bind_activate_window_scrollbar_to_textbox_labels()
 
 
-
+    #ugly solution that I came up with at 9pm to allow me to bind in the ProjectDisplayLine the window scrollbar in
+    #the issue is that it doesn't have a self that refers to the editing window, but it wants to use the editing windows scrollbar
+    #but it is called in the code that creates the editing window, so any global variable that has the editing window as an attribute
+    #will not yet have been created when the interpreter checks if the editing window exists so that the binding can work
+    #I'm solving this right now by delaying building the display box until after the editing window has been initialized and defined
+    #but I feel like this should be in the intiialization of the editing window... though I'm not actually sure now that I think about it
+    def build_display_box(self):
+        if not self.divided:
+            self.break_into_sections_box()
+        else: 
+            self.display_current_project()
 
     def update_gpt4_flag(self):
         #why is it global button_exists? Who uses that, and can we get this different?
@@ -705,34 +739,57 @@ class EditorFrame(AddFrame):
         button_frame = tk.Frame(master)
         button_frame.pack()
         self.run_all_button = tk.Button(button_frame, text = 'Run on all sections', command=self.run_all)
-        self.download_responses_to_pdf_button = tk.Button(button_frame, text = 'Get PDF of responses', command=self.download_responses_to_pdf)
+        self.download_responses_to_txt_button = tk.Button(button_frame, text = 'Get text of GPT responses', command=self.save_outputs)
         self.save_project_button = tk.Button(button_frame, text = 'Save Project', command=self.save_project)
         
         self.run_all_button.pack(side=tk.LEFT)
-        self.download_responses_to_pdf_button.pack(side=tk.LEFT)
+        self.download_responses_to_txt_button.pack(side=tk.LEFT)
         self.save_project_button.pack(side=tk.LEFT)
 
+        run_all_tooltip = ToolTip(self.run_all_button, 'To avoid hitting openai rate limits this will wait for sixty seconds after starting each batch of thirty')
+        save_project_tooltip = ToolTip(self.save_project_button, 'The file is saved as a .json which is a human readable format. You can open it with notepad and copy paste any data out.')
+
+    def check_rate_limit(self):
+        if rate_limit_hit == True:
+            root.after(1000, self.check_rate_limit)
+        else: 
+            self.run_all()
+
     def run_all (self):
-        PROJECT.send_all_sections_to_GPT()
-        self.display_currently_processing()
-        self.update_display_window()
+        delay = 0
+        counter = 0
+        self.run_all_button.configure(command=None, relief='sunken')
+        for line in self.display.lines:
+            counter += 1
+            if not line.section.llm_outputs:
+                if counter >= 30:
+                    delay += 60000
+                    counter = 0
+            root.after (delay, lambda line=line : line.generate_output())
+            delay += 400
+
+    def text_for_download(self):
+        text = ""
+        for chapter in PROJECT.chapters:
+            for section in chapter.sections:
+                text += section.name + ':\n' + section.llm_outputs + '\n'
+        return text
     
-    def display_currently_processing(self):
-        pass
-
-    def update_display_window(self):
-        pass
-
-    def download_responses_to_pdf(self):
-        PROJECT.create_pdf_of_gpt_outputs()
-
+    def save_outputs(self):
+        text = self.text_for_download()
+        file_path = filedialog.asksaveasfilename(defaultextension=".txt",
+                                             filetypes=[("Text files", "*.txt"),
+                                                        ("Python files", "*.py"),
+                                                        ("All files", "*.*")])
+        if file_path:
+            with open(file_path, 'w') as f:
+                f.write(text)
+                
     def save_project(self):
-        filename = ""
-        PROJECT.save(filename)
-
-class BlurbFrame(AddFrame):
-    pass
-    
+        file_path = filedialog.asksaveasfilename(defaultextension=".json",
+                                             filetypes=[("Json", "*.json")],
+                                                        )
+        PROJECT.save(file_path)
 
 class InputFrame(AddFrame):
     def __init__ (self, master):
@@ -771,6 +828,30 @@ class InputFrame(AddFrame):
         to_editing_page = tk.Button(button_frame, text='Go to Editing Page', command=loading_page2.load_editing_page)
         to_editing_page.pack()
 
+class ToolTip:
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+        self.widget.bind("<Enter>", self.show_tooltip)
+        self.widget.bind("<Leave>", self.hide_tooltip)
+
+    def show_tooltip(self, event=None):
+        x, y, _, _ = self.widget.bbox("insert")
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() + 25
+
+        self.tooltip_window = tk.Toplevel(self.widget)
+        self.tooltip_window.wm_overrideredirect(True)  # Removes the window decorations
+        self.tooltip_window.wm_geometry(f"+{x}+{y}")
+
+        label = tk.Label(self.tooltip_window, text=self.text, bg="yellow", relief="solid", borderwidth=1)
+        label.pack()
+
+    def hide_tooltip(self, event=None):
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
 
 class MainInterface:
     def __init__(self, master) -> None:
@@ -780,16 +861,16 @@ class MainInterface:
         self.notebook = root.notebook
 
         self.editing_frame = EditorFrame(self.notebook)
-        self.blurb_frame = ttk.Frame(self.notebook)
+
         self.input_frame = InputFrame(self.notebook)
 
         self.notebook.add(self.input_frame, text="Input Novel")
         self.notebook.add(self.editing_frame, text="Editing and Summarization")
-        self.notebook.add(self.blurb_frame, text='Create Blurbs')
 
 def start_program():
-    global PROJECT, root, async_loop, loading_page, loading_page2, api_key, WARNING_FONT, main_interface
+    global PROJECT, rate_limit_hit, root, async_loop, loading_page, loading_page2, api_key, WARNING_FONT, main_interface
     PROJECT = Project
+    rate_limit_hit = False
     api_key = None
     root = tk.Tk()
     root.title('GPT Writing Tools')
