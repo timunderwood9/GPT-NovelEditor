@@ -8,10 +8,15 @@ from project_class import Project
 import openai
 import asyncio
 from tkinter import messagebox
+from dotenv import load_dotenv
+import os
 
 #testing function
 def _go_to_current_position(event):
-    
+    load_dotenv()
+    load_dotenv(r"C:\Users\Dell Latitude 7400\OneDrive\Documents\GitHub\timunderwood-private\python.env")
+    PROJECT.api_key = os.getenv('OPENAI_API_KEY')
+
 
     PROJECT.title = "The Missing Prince"
     PROJECT.divided = False
@@ -486,12 +491,13 @@ class ProjectDisplayLine:
             model = 'gpt-3.5-turbo'
 
         try:
-            output = await openai.ChatCompletion.create (
+            output = openai.ChatCompletion.acreate (
             model = model,
             messages = [{"role" : "system", "content" : PROJECT.current_prompt},
                       {"role" : "user", "content" : self.section.section_text}
                       ]
         )
+            reply = output['choices'][0]['message']['content']
         except openai.error.AuthenticationError as e:
             print('exception')
             show_error('You probably entered an invalid API key')
@@ -502,7 +508,7 @@ class ProjectDisplayLine:
             show_error(str(e))
 
 
-        self.section.llm_outputs += PROJECT.current_prompt + '\n' + output + '\n'
+        self.section.llm_outputs += PROJECT.current_prompt + '\n' + reply + '\n'
         self.processing_button.after(0, self.processing_button.grid_forget)
         self.generate_output_button.after(0, lambda : self.generate_output_button.grid(row=0, column=2))
         self.no_outputs_button.destroy
@@ -563,9 +569,9 @@ class EditorFrame(AddFrame):
         #     self.api_entry_box = CustomTextBox(self.frame, 'api_key', label='Please enter your OpenAI api key here', widget_type='entrybox', submitted_text='We will use {} as the API key')
         if PROJECT.api_key:
             openai.api_key = PROJECT.api_key
-            self.api_entry_box = EditAndRestoreBox(self.frame, PROJECT.api_key, height=1, width=20, label_text="The OpenAI API key is:", property='api_key', object=PROJECT)
+            self.api_entry_box = EditAndRestoreBox(self.frame, PROJECT.api_key, height=1, width=40, label_text="The OpenAI API key is:", property='api_key', object=PROJECT)
         else:
-            self.api_entry_box = EditAndRestoreBox(self.frame, "", height=1, width=20, label_text="Enter your OpenAI API key:", property='api_key', object=PROJECT)
+            self.api_entry_box = EditAndRestoreBox(self.frame, "", height=1, width=40, label_text="Enter your OpenAI API key:", property='api_key', object=PROJECT)
 
 
         prompt_text = "You are a developmental editor with years of experience in helping writers create bestselling novels, you will rate the following scene and then provide concrete and specific advice on how to make it more emotionally powerful, compelling, and evocative."
