@@ -10,6 +10,7 @@ import asyncio
 from tkinter import messagebox
 from dotenv import load_dotenv
 import os
+import threading
 
 #testing function
 def _go_to_current_position(event):
@@ -306,6 +307,7 @@ class EditAndRestoreBox:
 
     def update_property (self, new_value):
         setattr(self.object, self.property, new_value)
+        print( PROJECT.api_key)
 
     def generate_prompt_display(self, prompt_text):
         if self.width:
@@ -477,11 +479,15 @@ class ProjectDisplayLine:
         self.close_button.pack(side="right")
 
     def generate_output(self):
+        self.generate_output_button.grid_forget()
         self.processing_button.grid(row=0, column=2, sticky='nsew')
-        #Has get_GPT_response run in the async loop so the rest of the app can keep running while waiting
+        threading.Thread(target=self.run_asyncio_loop).start()
 
-        async_loop.run_until_complete(self.get_GPT_response())
-        
+    def run_asyncio_loop(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.get_GPT_response())
+    
     async def get_GPT_response(self):
         print ('about to start waiting')
 
@@ -491,13 +497,17 @@ class ProjectDisplayLine:
             model = 'gpt-3.5-turbo'
 
         try:
-            output = openai.ChatCompletion.acreate (
+            output = await openai.ChatCompletion.acreate (
             model = model,
             messages = [{"role" : "system", "content" : PROJECT.current_prompt},
                       {"role" : "user", "content" : self.section.section_text}
                       ]
         )
             reply = output['choices'][0]['message']['content']
+            print(reply)
+            self.section.llm_outputs += f'Prompt: {PROJECT.current_prompt} \n Output: {reply} \n [End of Output]'
+
+
         except openai.error.AuthenticationError as e:
             print('exception')
             show_error('You probably entered an invalid API key')
@@ -511,7 +521,7 @@ class ProjectDisplayLine:
         self.section.llm_outputs += PROJECT.current_prompt + '\n' + reply + '\n'
         self.processing_button.after(0, self.processing_button.grid_forget)
         self.generate_output_button.after(0, lambda : self.generate_output_button.grid(row=0, column=2))
-        self.no_outputs_button.destroy
+        self.no_outputs_button.after(0, self.no_outputs_button.destroy)
         self.view_output_button.after(0, lambda : self.view_output_button.grid(row=0, column=3))
     
     def view_output(self):
@@ -523,7 +533,7 @@ class ProjectDisplayLine:
         self.text_frame.grid(row=1, columnspan=4, sticky='nsew')
         self.textbox = tk.Text(self.text_frame, wrap='word', width=60, height=10)
         self.textbox.pack(expand=True, fill='both')
-        self.textbox.insert(tk.END, self.section.llm_results) 
+        self.textbox.insert(tk.END, self.section.llm_outputs) 
         self.textbox.bind("<FocusIn>", deactivate_window_scrollbar)
         
         self.close_button = tk.Button(self.text_frame, text="Close", command=self.close_text_frame)

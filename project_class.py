@@ -6,7 +6,7 @@ import re
 import tkinter as tk
 
 class Section:
-    def __init__(self, section_text, name, llm_outputs = None):
+    def __init__(self, section_text, name, llm_outputs = ""):
         self.name = name
         self.section_text = section_text
         self.llm_outputs = llm_outputs
