@@ -3,9 +3,10 @@ from tiktoken import encoding_for_model
 import math
 import openai
 import re
+import tkinter as tk
 
 class Section:
-    def __init__(self, section_text, name, llm_outputs = None):
+    def __init__(self, section_text, name, llm_outputs = ""):
         self.name = name
         self.section_text = section_text
         self.llm_outputs = llm_outputs
@@ -32,9 +33,12 @@ class Chapter:
 
 class Project:
     def __init__(self, **kwargs):
+        self.api_key = ""
         self.title = ""
         self.chapters = []
         self.project_text = ""
+        self.current_prompt = ""
+        self.gpt4_flag = 0
         for key, value in kwargs.items():
             setattr(self, key, value)
         
@@ -107,6 +111,7 @@ class Project:
             self.split_chapter(chapter)
 
     def create_sections_and_chapters_from_text(self, flag, divider = 'Chapter'):
+        print(flag)
         if not flag:
             chapter = Chapter(f'{self.title}', self.project_text)
             self.add_chapter(chapter)
@@ -127,30 +132,39 @@ class Project:
         
         self.split_all_chapters()
         
-    def send_section_to_GPT(self, section):
-        text = section.section_text
-        model = 'gpt-3.5-turbo'
-        if self.gpt4_flag:
-            model = 'gpt-4'
+    # def send_section_to_GPT(self, section):
+    #     text = section.section_text
+    #     model = 'gpt-3.5-turbo'
+    #     if self.gpt4_flag:
+    #         model = 'gpt-4'
+    #     try:
+    #         section.llm_results = openai.ChatCompletion.create(
+    #             model = model,
+    #             messages = [
+    #                 {"role" : "system", "content" : self.current_prompt},
+    #                 {"role" : "system", "content" : text}
+    #             ]
+    #         )
+        
+    #     except openai.error.AuthenticationError as e:
+    #         print ('exception used')
+    #         temp_root = tk.Tk()
+    #         temp_root.withdraw()  # Hide the temporary Tk root window
+    #         tk.messagebox.showerror("Authentication Error", "You probably didn't enter a currently valid API key, double check your API key.")
+    #         temp_root.destroy()  # Destroy the temporary Tk root window
 
-        section.llm_results = openai.ChatCompletion.create(
-            model = model,
-            messages = [
-                {"role" : "system", "content" : self.current_prompt},
-                {"role" : "system", "content" : text}
-            ]
-        )
-        print(model)
+    #     except Exception as e:
+    #         self.show_error(str(e))
 
-    def send_all_sections_to_GPT(self):
-        for chapter in self.chapters:
-            for section in chapter.sections:
-                self.send_section_to_GPT(section)
-                self.send_message_to_GUI(section)
-    
-    #Placeholder: I'm pretty sure print will not let me do what I want
-    def send_message_to_GUI(section):
-        print(section.name)
+    #     print(model)
+
+    # def send_all_sections_to_GPT(self):
+    #     for chapter in self.chapters:
+    #         for section in chapter.sections:
+    #             self.send_section_to_GPT(section)
+    #             self.send_message_to_GUI(section)
+
+
 
     #right now going to do a pdf instead, but I think this option should be there eventually
     def create_txt_for_download(self):
