@@ -222,12 +222,14 @@ class LoadingPage2:
         destroy_widgets(root)
         global main_interface
         main_interface = MainInterface(root)
+        main_interface.editing_frame.build_display_box()
         main_interface.notebook.select(main_interface.input_frame)
 
     def load_editing_page(self):
         destroy_widgets(root)
         global main_interface
         main_interface = MainInterface(root)
+        main_interface.editing_frame.build_display_box()
         main_interface.notebook.select(main_interface.editing_frame)
 
 #currently defined to only take 'textbox' and 'entrybox' as types.
